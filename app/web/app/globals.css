@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================
+ * DESIGN SYSTEM QUICK REFERENCE
+ *
+ * Colors   → tailwind.config.ts  (brand.bg, brand.gold, etc.)
+ * Fonts    → tailwind.config.ts  (fontFamily.display, fontFamily.sans)
+ *            layout.tsx           (Google Fonts: Inter, Playfair Display)
+ * Spacing  → Tailwind defaults   (p-4 = 1rem, gap-8 = 2rem, etc.)
+ * Shadows  → tailwind.config.ts  (shadow-luxe)
+ *
+ * To reskin: edit the "colors.brand" object in tailwind.config.ts
+ * ============================================================= */
+
+:root {
+  color-scheme: dark;
+  --font-sans: "Helvetica Neue";
+  --font-display: "Georgia";
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* Body base: dark background with gold radial glow + grain texture */
+body {
+  @apply bg-brand-bg text-brand-text font-sans antialiased;
+  background-image: theme("backgroundImage.hero-radial"), theme("backgroundImage.grain");
+  background-repeat: no-repeat, repeat;
+  background-size: cover, 160px 160px;
+}
+
+/* Default link style: off-white, white on hover */
+a {
+  @apply text-brand-text hover:text-white;
+}
+
+/* Gold-tinted text selection */
+::selection {
+  background: rgba(201, 162, 77, 0.35);
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-xs font-semibold tracking-[0.22em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-brand-gold text-black hover:bg-brand-gold2;
+  }
+
+  .btn-outline {
+    @apply border border-brand-gold/60 text-brand-text hover:border-brand-gold hover:text-white;
+  }
+
+  .btn-ghost {
+    @apply border border-brand-line text-brand-muted hover:border-brand-gold/60 hover:text-brand-text;
+  }
+
+  .btn-block {
+    @apply w-full;
+  }
+}
+
+/* Minimal form resets — transparent inputs to match dark surfaces */
+input,
+textarea,
+select {
+  @apply bg-transparent;
+}
