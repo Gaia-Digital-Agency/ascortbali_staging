@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AnalyticsBeacon />
 
         <header className="sticky top-0 z-10 border-b border-brand-line bg-brand-bg/70 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
             <Link href="/" className="group flex items-center gap-3">
               <img
                 src={withBasePath("/api/admin-asset/baligirls_logo.png")}
@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="ml-1 h-[1px] w-10 bg-brand-gold/70 opacity-70 transition group-hover:opacity-100" />
             </Link>
 
-            <nav className="flex items-center gap-2">
+            <nav className="flex flex-wrap items-center gap-2">
               <AuthNavButton />
               {[1, 2, 3].map((p) => (
                 <Link

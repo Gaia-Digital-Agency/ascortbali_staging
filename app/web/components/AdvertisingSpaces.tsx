@@ -70,7 +70,7 @@ export function MainAdSpaces() {
   const homeAds = ads.filter((ad) => ad.slot !== "bottom");
 
   return (
-    <div className="grid gap-5 md:grid-cols-3">
+    <div className="mx-auto grid max-w-xs gap-5 sm:max-w-none sm:grid-cols-2 md:grid-cols-3">
       {homeAds.map((ad) => (
         <a
           key={ad.slot}

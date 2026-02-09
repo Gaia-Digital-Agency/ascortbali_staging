@@ -172,7 +172,7 @@ export default async function Page({
       </section>
 
       <section className="space-y-6">
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           <select className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-xs tracking-[0.18em] text-brand-muted" defaultValue={selectedNationality || ""} name="nationality" form="creator-filter-form">
             <option value="">ALL NATIONALITIES</option>
             {nationalityOptions.map((option) => (
@@ -249,7 +249,7 @@ export default async function Page({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mx-auto grid max-w-xs gap-4 sm:max-w-none sm:grid-cols-2 lg:grid-cols-5">
           {pageSlots.map((slotIndex) => {
             const creator = activeCreators[slotIndex];
             if (!creator) {

@@ -3,15 +3,50 @@ import re
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 import time
-from urllib.parse import urlparse
+from pathlib import Path
 from selenium_stealth import stealth
+import argparse
+import os
+from typing import Any, Dict, List, Optional
 
-# Path to the JSON file containing the URLs
-PAGE_FILE = 'page_source.json'
-# Output files
-OUTPUT_JSON_FILE = 'page_output.json'
-INFO_OUTPUT_JSON_FILE = 'info_output.json'
-IMAGE_OUTPUT_JSON_FILE = 'image_output.json'
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def _atomic_write_json(path: Path, obj: Any) -> None:
+    """
+    Write JSON atomically so a crash/interrupt never leaves a 0-byte/corrupt file.
+    """
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with tmp_path.open("w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, path)
+
+
+def _write_outputs(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
+    output_json_file = out_dir / "page_output.json"
+    info_output_json_file = out_dir / "info_output.json"
+    image_output_json_file = out_dir / "image_output.json"
+
+    # page_output.json (all data)
+    _atomic_write_json(output_json_file, all_results)
+
+    # info_output.json (non-image data only)
+    info_results: List[Dict[str, Any]] = []
+    for data in all_results:
+        info = dict(data)
+        info.pop("images", None)
+        info_results.append(info)
+    _atomic_write_json(info_output_json_file, info_results)
+
+    # image_output.json (flattened image list with stable IDs)
+    image_output: List[Dict[str, str]] = []
+    for data in all_results:
+        profile_id = data.get("ID", "unknown")
+        for idx, img_url in enumerate(data.get("images", []), start=1):
+            image_output.append({"id": f"IMW_{profile_id}_{idx:02d}", "url": img_url})
+    _atomic_write_json(image_output_json_file, image_output)
 
 
 def is_cloudflare(driver):
@@ -247,18 +282,17 @@ def scrape_one_page(driver, url_to_scrape):
     return data
 
 
-def scrape_pages():
+def scrape_pages(page_file: Path, out_dir: Path, max_urls: Optional[int] = None) -> None:
     """
     Scrapes all pages listed in page.json and outputs results to markdown and JSON.
     """
     try:
-        with open(PAGE_FILE, 'r') as f:
-            page_data = json.load(f)
+        page_data = json.loads(page_file.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        print(f"Error: '{PAGE_FILE}' not found.")
+        print(f"Error: '{page_file}' not found.")
         return
     except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from '{PAGE_FILE}'.")
+        print(f"Error: Could not decode JSON from '{page_file}'.")
         return
 
     # Support both old format {"url": "..."} and new format {"urls": [...]}
@@ -267,12 +301,15 @@ def scrape_pages():
     elif 'url' in page_data:
         urls = [page_data['url']]
     else:
-        print(f"Error: No 'urls' or 'url' found in '{PAGE_FILE}'.")
+        print(f"Error: No 'urls' or 'url' found in '{page_file}'.")
         return
 
     if not urls:
         print("No URLs to scrape.")
         return
+
+    if max_urls is not None:
+        urls = urls[: max_urls]
 
     print(f"Found {len(urls)} URL(s) to scrape.")
 
@@ -301,38 +338,16 @@ def scrape_pages():
             try:
                 data = scrape_one_page(driver, url)
                 all_results.append(data)
+                # Snapshot outputs so a later crash/interrupt doesn't lose progress.
+                _write_outputs(out_dir, all_results)
             except Exception as e:
                 print(f"  Failed to scrape {url}: {e}")
             # Delay between pages to avoid rate limiting
             if i < len(urls) - 1:
                 time.sleep(3)
 
-        # Write JSON output (all data)
-        with open(OUTPUT_JSON_FILE, 'w', encoding='utf-8') as f:
-            json.dump(all_results, f, indent=2, ensure_ascii=False)
-
-        # Write info_output.json (non-image data only)
-        info_results = []
-        for data in all_results:
-            info = dict(data)
-            info.pop('images', None)
-            info_results.append(info)
-
-        with open(INFO_OUTPUT_JSON_FILE, 'w', encoding='utf-8') as f:
-            json.dump(info_results, f, indent=2, ensure_ascii=False)
-
-        # Build image_output.json with unique keys per profile ID
-        image_output = []
-        for data in all_results:
-            profile_id = data.get('ID', 'unknown')
-            for idx, img_url in enumerate(data.get('images', []), start=1):
-                image_output.append({
-                    "id": f"IMW_{profile_id}_{idx:02d}",
-                    "url": img_url
-                })
-
-        with open(IMAGE_OUTPUT_JSON_FILE, 'w', encoding='utf-8') as f:
-            json.dump(image_output, f, indent=2, ensure_ascii=False)
+        # Final write (also covers the case where there were 0 results)
+        _write_outputs(out_dir, all_results)
 
         print(f"\nDone! Scraped {len(all_results)}/{len(urls)} pages.")
 
@@ -341,8 +356,27 @@ def scrape_pages():
     finally:
         if driver:
             driver.quit()
-        print(f"Content saved in {OUTPUT_JSON_FILE}, {INFO_OUTPUT_JSON_FILE}, and {IMAGE_OUTPUT_JSON_FILE}")
+        print("Content saved in page_output.json, info_output.json, and image_output.json")
 
 
 if __name__ == '__main__':
-    scrape_pages()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--page-file",
+        default=str(BASE_DIR / "page_source.json"),
+        help="Path to page_source.json (defaults to engine/page_source.json).",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default=str(BASE_DIR),
+        help="Output directory for page_output.json/info_output.json/image_output.json (defaults to engine/).",
+    )
+    parser.add_argument(
+        "--max-urls",
+        type=int,
+        default=None,
+        help="Optional limit for number of URLs to scrape (useful for smoke tests).",
+    )
+    args = parser.parse_args()
+
+    scrape_pages(Path(args.page_file), Path(args.out_dir), args.max_urls)
