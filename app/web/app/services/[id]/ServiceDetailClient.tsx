@@ -1,3 +1,4 @@
+// This module defines the client-side component for displaying detailed service information.
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -6,6 +7,7 @@ import { apiFetch, getAccessToken } from "../../../lib/api";
 import { BuyButton } from "../../../components/BuyButton";
 import { FavoriteButton } from "../../../components/FavoriteButton";
 
+// Type definition for a Service object, including nested creator and category info.
 export type Service = {
   id: string;
   creatorId: string;
@@ -19,9 +21,11 @@ export type Service = {
   creator?: { email?: string; providerProfile?: { displayName?: string; city?: string; country?: string } | null } | null;
 };
 
+// ServiceDetailClient component displays a service's details.
 export function ServiceDetailClient({ service }: { service: Service }) {
   const [authenticated, setAuthenticated] = useState(false);
 
+  // Effect hook to check user authentication status on component mount.
   useEffect(() => {
     const run = async () => {
       const token = getAccessToken();
@@ -36,6 +40,7 @@ export function ServiceDetailClient({ service }: { service: Service }) {
     run();
   }, []);
 
+  // Memoized array of thumbnail images, using placeholders if actual images are missing.
   const thumbnailImages = useMemo(() => {
     const galleryImages = Array.isArray(service.galleryImages) ? service.galleryImages : [];
     return [
@@ -48,6 +53,7 @@ export function ServiceDetailClient({ service }: { service: Service }) {
 
   return (
     <div className="space-y-10">
+      {/* Navigation link to go back home. */}
       <div className="flex items-center justify-end">
         <Link className="text-xs tracking-[0.22em] text-brand-muted hover:text-brand-text" href="/">
           BACK HOME
@@ -55,8 +61,10 @@ export function ServiceDetailClient({ service }: { service: Service }) {
       </div>
 
       <div className="relative">
+        {/* Main service detail section, blurred and disabled if not authenticated. */}
         <section className={`grid gap-8 lg:grid-cols-[1.4fr_1fr] ${!authenticated ? "pointer-events-none select-none blur-sm" : ""}`}>
           <div className="space-y-5">
+            {/* Main service image display. */}
             <div className="relative h-[420px] overflow-hidden rounded-3xl border border-brand-line">
               <img
                 src={service.mainImageUrl || "/placeholders/hero-1.jpg"}
@@ -66,6 +74,7 @@ export function ServiceDetailClient({ service }: { service: Service }) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
             </div>
 
+            {/* Thumbnail gallery for additional service images. */}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {thumbnailImages.map((image, index) => (
                 <div key={index} className="relative h-32 overflow-hidden rounded-2xl border border-brand-line">
@@ -75,6 +84,7 @@ export function ServiceDetailClient({ service }: { service: Service }) {
             </div>
           </div>
 
+          {/* Service information panel. */}
           <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-8 shadow-luxe">
             <div className="text-xs tracking-luxe text-brand-muted">
               {service.durationMinutes} MIN • {service.basePrice}
@@ -84,6 +94,7 @@ export function ServiceDetailClient({ service }: { service: Service }) {
 
             <div className="mt-5 h-px w-14 bg-brand-gold/70" />
 
+            {/* Creator and Category details. */}
             <div className="mt-6 space-y-4 text-sm text-brand-muted">
               <div>
                 <div className="text-xs tracking-[0.22em]">CREATOR</div>
@@ -103,10 +114,12 @@ export function ServiceDetailClient({ service }: { service: Service }) {
               </div>
             </div>
 
+            {/* Service description. */}
             <p className="mt-6 whitespace-pre-wrap text-sm leading-7 text-brand-muted md:text-base">
               {service.description}
             </p>
 
+            {/* Action buttons (Buy and Favorite). */}
             <div className="mt-8 flex flex-wrap gap-3">
               <BuyButton serviceId={service.id} />
               <FavoriteButton serviceId={service.id} />
@@ -115,6 +128,7 @@ export function ServiceDetailClient({ service }: { service: Service }) {
         </section>
       </div>
 
+      {/* Login/Register prompts if not authenticated. */}
       {!authenticated && (
         <div className="flex justify-center gap-4">
           <Link

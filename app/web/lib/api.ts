@@ -1,11 +1,14 @@
+// This module provides functions for interacting with the backend API.
 import { APP_BASE_PATH, withBasePath } from "./paths";
 
+// Determine the API base URL from environment variables or defaults.
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   (APP_BASE_PATH ? withBasePath("/api") : "http://localhost:4000");
 
 export type Tokens = { accessToken: string; refreshToken: string };
 
+// Functions for managing authentication tokens in session storage.
 export function getAccessToken() {
   if (typeof window === "undefined") return null;
   return window.sessionStorage.getItem("accessToken");
@@ -17,6 +20,7 @@ export function setTokens(t: Tokens) {
   window.dispatchEvent(new Event("auth:change"));
 }
 
+// Clears authentication tokens from session and local storage.
 export function clearTokens() {
   if (typeof window === "undefined") return;
   try {
@@ -30,6 +34,7 @@ export function clearTokens() {
   }
 }
 
+// A wrapper around `fetch` that adds the API base URL and authorization token.
 export async function apiFetch(path: string, init?: RequestInit) {
   const token = getAccessToken();
   const headers = new Headers(init?.headers);

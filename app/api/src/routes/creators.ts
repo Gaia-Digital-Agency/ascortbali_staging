@@ -1,15 +1,20 @@
+// Defines routes for fetching creator data.
 import { Router } from "express";
 import { getPool } from "../lib/pg.js";
 
 export const creatorsRouter = Router();
 
+// Route to get a paginated list of creators.
 creatorsRouter.get("/", async (req, res) => {
-  const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
+  // The homepage requests up to 500 creators in one call. Keep a sane cap, but
+  // don't silently truncate to 100 which makes "auto-added" cards appear missing.
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 500);
   const page = Math.max(Number(req.query.page ?? 1), 1);
   const offset = (page - 1) * limit;
   const pool = getPool();
   try {
     const [rowsRes, countRes] = await Promise.all([
+      // Query for a paginated list of creators with their primary image.
       pool.query(
       `SELECT p.uuid,
               p.provider_id,
@@ -39,6 +44,7 @@ creatorsRouter.get("/", async (req, res) => {
        OFFSET $2`,
       [limit, offset]
     ),
+      // Query for the total number of creators.
       pool.query("SELECT COUNT(*)::int AS total FROM providers"),
     ]);
     res.json({
@@ -52,10 +58,12 @@ creatorsRouter.get("/", async (req, res) => {
   }
 });
 
+// Route to get a single creator by their UUID.
 creatorsRouter.get("/:uuid", async (req, res) => {
   const { uuid } = req.params;
   const pool = getPool();
   try {
+    // Query for the creator's details.
     const creatorRes = await pool.query(
       `SELECT p.*
          FROM providers p
@@ -66,6 +74,7 @@ creatorsRouter.get("/:uuid", async (req, res) => {
       return res.status(404).json({ error: "Not found" });
     }
 
+    // Query for all of the creator's images.
     const imagesRes = await pool.query(
       `SELECT image_id, image_file, sequence_number
          FROM provider_images

@@ -1,7 +1,5 @@
 
-import cv2
 import json
-import numpy as np
 import os
 import sys
 from urllib.parse import urlparse
@@ -13,6 +11,8 @@ def detect_watermark_with_ocr(image):
     Use EasyOCR to find the watermark text bounding boxes.
     Returns list of bounding boxes [[x1,y1],[x2,y2],[x3,y3],[x4,y4]].
     """
+    import cv2
+    import numpy as np
     import easyocr
     reader = easyocr.Reader(['en'], gpu=False, verbose=False)
 
@@ -46,6 +46,8 @@ def create_ocr_mask(image, boxes, padding=10):
     we use detected boxes to find the text's vertical position, then extend
     the mask as a full horizontal band to cover the entire watermark line.
     """
+    import cv2
+    import numpy as np
     h, w = image.shape[:2]
     mask = np.zeros((h, w), dtype=np.uint8)
 
@@ -85,6 +87,7 @@ def create_fallback_mask(image):
     If OCR doesn't find the watermark, use a fixed rectangular mask
     based on the known watermark position pattern.
     """
+    import numpy as np
     h, w = image.shape[:2]
     mask = np.zeros((h, w), dtype=np.uint8)
 
@@ -118,8 +121,11 @@ def remove_watermark_lama(input_path, output_path, debug_dir):
     """
     Remove watermark using OCR detection + LaMa inpainting.
     """
-    from simple_lama_inpainting import SimpleLama
+    import cv2
+    import numpy as np
+    import torch
     from PIL import Image
+    from simple_lama_inpainting.utils.util import prepare_img_and_mask, download_model
 
     image_cv = cv2.imread(input_path)
     if image_cv is None:
@@ -150,17 +156,35 @@ def remove_watermark_lama(input_path, output_path, debug_dir):
     pil_image = Image.fromarray(image_rgb)
     pil_mask = Image.fromarray(mask)
 
-    print("  Loading LaMa model...")
-    lama = SimpleLama()
-    print("  Running LaMa inpainting...")
-    result = lama(pil_image, pil_mask)
+    device = torch.device("mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else "cpu")
+    lama_url = "https://github.com/enesmsahin/simple-lama-inpainting/releases/download/v0.1.0/big-lama.pt"
+    model_path = os.environ.get("LAMA_MODEL") or download_model(lama_url)
+    print(f"  Loading LaMa model on {device.type}...")
+    model = torch.jit.load(model_path, map_location=device)
+    model.eval()
+    model.to(device)
 
-    result.save(output_path)
+    print("  Running LaMa inpainting...")
+    img_t, mask_t = prepare_img_and_mask(pil_image, pil_mask, device)
+    with torch.inference_mode():
+        inpainted = model(img_t, mask_t)
+
+    cur_res = inpainted[0].permute(1, 2, 0).detach().cpu().numpy()
+    cur_res = np.clip(cur_res * 255, 0, 255).astype(np.uint8)
+    orig_h, orig_w = image_cv.shape[:2]
+    cur_res = cur_res[:orig_h, :orig_w]
+    Image.fromarray(cur_res).save(output_path)
     print(f"  Saved: {output_path}")
     return True
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=["download", "clean", "all"], default="all", nargs="?",
+                        help="download = fetch images only, clean = remove watermarks only, all = both")
+    args = parser.parse_args()
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     image_output_file = os.path.join(base_dir, "image_output.json")
     images_dir = os.path.join(base_dir, "watermark", "watermark_images")
@@ -184,32 +208,63 @@ if __name__ == '__main__':
         print("image_output.json is empty or invalid.")
         sys.exit(1)
 
-    print(f"Processing {len(items)} image(s) from: {image_output_file}\n")
+    # Step 1: Download
+    if args.mode in ("download", "all"):
+        print(f"Downloading {len(items)} image(s)...\n")
+        for item in items:
+            image_id = item.get("id")
+            url = item.get("url")
+            if not image_id or not url:
+                continue
 
-    for item in items:
-        image_id = item.get("id")
-        url = item.get("url")
-        if not image_id or not url:
-            continue
+            ext = get_extension(url)
+            download_name = f"{image_id}{ext}"
+            input_path = os.path.join(target_dir, download_name)
 
-        ext = get_extension(url)
-        download_name = f"{image_id}{ext}"
-        input_path = os.path.join(target_dir, download_name)
+            if os.path.exists(input_path):
+                print(f"  Already downloaded: {download_name}")
+                continue
 
-        clean_id = image_id.replace("IMW_", "IM_", 1)
-        output_name = f"{clean_id}{ext}"
-        output_path = os.path.join(clean_dir, output_name)
+            print(f"  Downloading: {image_id}")
+            try:
+                download(url, input_path)
+                print(f"    Saved: {input_path}")
+            except Exception as e:
+                print(f"    Failed: {url} -> {e}")
 
-        if os.path.exists(output_path):
-            continue
+        print(f"\nDownloads in: {target_dir}\n")
 
-        print(f"Processing: {image_id}")
-        try:
-            download(url, input_path)
-            remove_watermark_lama(input_path, output_path, debug_dir)
-        except Exception as e:
-            print(f"  Failed: {url} -> {e}")
-        print()
+    # Step 2: Clean (remove watermarks)
+    if args.mode in ("clean", "all"):
+        print(f"Cleaning {len(items)} image(s)...\n")
+        for item in items:
+            image_id = item.get("id")
+            url = item.get("url")
+            if not image_id or not url:
+                continue
 
-    print(f"Done! Results in: {clean_dir}")
-    print(f"Debug files in: {debug_dir}")
+            ext = get_extension(url)
+            download_name = f"{image_id}{ext}"
+            input_path = os.path.join(target_dir, download_name)
+
+            clean_id = image_id.replace("IMW_", "IM_", 1)
+            output_name = f"{clean_id}{ext}"
+            output_path = os.path.join(clean_dir, output_name)
+
+            if os.path.exists(output_path):
+                print(f"  Already clean: {output_name}")
+                continue
+
+            if not os.path.exists(input_path):
+                print(f"  Missing download: {download_name} (run 'download' first)")
+                continue
+
+            print(f"  Processing: {image_id}")
+            try:
+                remove_watermark_lama(input_path, output_path, debug_dir)
+            except Exception as e:
+                print(f"    Failed: {e}")
+            print()
+
+        print(f"Done! Results in: {clean_dir}")
+        print(f"Debug files in: {debug_dir}")

@@ -1,15 +1,19 @@
+// This module defines the Admin Login page component.
 "use client";
 
 import { useEffect, useState } from "react";
 import { API_BASE, apiFetch, clearTokens, setTokens } from "../../lib/api";
 import { withBasePath } from "../../lib/paths";
 
+// AdminLoginPage functional component.
 export default function AdminLoginPage() {
+  // State variables for username, password, loading status, and error messages.
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin123");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Effect hook to check if an admin is already logged in and redirect if so.
   useEffect(() => {
     (async () => {
       try {
@@ -23,11 +27,13 @@ export default function AdminLoginPage() {
     })();
   }, []);
 
+  // Handles the form submission for admin login.
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
+      // Send login request to the API.
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -35,8 +41,10 @@ export default function AdminLoginPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? "Login failed");
+      // Store access and refresh tokens.
       setTokens({ accessToken: json.accessToken, refreshToken: json.refreshToken });
 
+      // Verify account role and redirect to the admin dashboard.
       const profile = await apiFetch("/me");
       if (profile.role !== "admin") {
         clearTokens();
@@ -52,13 +60,16 @@ export default function AdminLoginPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-6">
+      {/* Page header section. */}
       <div className="text-center">
         <div className="text-xs tracking-luxe text-brand-muted">ADMIN</div>
         <h1 className="mt-2 font-display text-3xl">Sign In</h1>
       </div>
 
+      {/* Login form. */}
       <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7 shadow-luxe">
         <form onSubmit={onSubmit} className="space-y-4">
+          {/* Username input field. */}
           <div>
             <label className="text-xs tracking-[0.22em] text-brand-muted">USERNAME</label>
             <input
@@ -69,6 +80,7 @@ export default function AdminLoginPage() {
             />
           </div>
 
+          {/* Password input field. */}
           <div>
             <label className="text-xs tracking-[0.22em] text-brand-muted">PASSWORD</label>
             <input
@@ -79,8 +91,10 @@ export default function AdminLoginPage() {
             />
           </div>
 
+          {/* Error message display. */}
           {error ? <div className="text-xs text-red-400">{error}</div> : null}
 
+          {/* Submit button. */}
           <button disabled={loading} className="btn btn-primary btn-block py-3">
             {loading ? "SIGNING IN..." : "ADMIN SIGN IN"}
           </button>

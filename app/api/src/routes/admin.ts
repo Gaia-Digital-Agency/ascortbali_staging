@@ -1,3 +1,4 @@
+// This module defines administrative routes for managing application data.
 import { Router } from "express";
 import { z } from "zod";
 import { getPool } from "../lib/pg.js";
@@ -5,8 +6,10 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 
 export const adminRouter = Router();
 
+// Apply authentication and role-based access control middleware for all admin routes.
 adminRouter.use(requireAuth, requireRole(["admin"]));
 
+// Route to fetch application statistics.
 adminRouter.get("/stats", async (_req, res) => {
   const pool = getPool();
   try {
@@ -24,6 +27,7 @@ adminRouter.get("/stats", async (_req, res) => {
   }
 });
 
+// Route to fetch advertising spaces.
 adminRouter.get("/ads", async (_req, res) => {
   const pool = getPool();
   try {
@@ -47,12 +51,14 @@ adminRouter.get("/ads", async (_req, res) => {
   }
 });
 
+// Zod schema for validating advertising space upsert data.
 const UpsertAdSchema = z.object({
   slot: z.enum(["home-1", "home-2", "home-3", "bottom"]),
   image: z.string().optional().nullable(),
   text: z.string().optional().nullable(),
 });
 
+// Route to create or update an advertising space.
 adminRouter.post("/ads", async (req, res) => {
   const parsed = UpsertAdSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
@@ -85,6 +91,7 @@ adminRouter.post("/ads", async (req, res) => {
   }
 });
 
+// Route to update an advertising space by slot.
 adminRouter.put("/ads/:slot", async (req, res) => {
   const mergedBody = { ...req.body, slot: req.params.slot };
   const parsed = UpsertAdSchema.safeParse(mergedBody);
@@ -118,6 +125,7 @@ adminRouter.put("/ads/:slot", async (req, res) => {
   }
 });
 
+// Route to delete (clear) an advertising space by slot.
 adminRouter.delete("/ads/:slot", async (req, res) => {
   const slot = req.params.slot;
   if (!["home-1", "home-2", "home-3", "bottom"].includes(slot)) return res.status(400).json({ error: "invalid_slot" });

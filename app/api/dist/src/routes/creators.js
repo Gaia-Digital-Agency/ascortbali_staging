@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getPool } from "../lib/pg.js";
 export const creatorsRouter = Router();
 creatorsRouter.get("/", async (req, res) => {
-    const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 500);
     const page = Math.max(Number(req.query.page ?? 1), 1);
     const offset = (page - 1) * limit;
     const pool = getPool();

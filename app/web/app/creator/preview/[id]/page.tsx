@@ -1,3 +1,4 @@
+// This module defines the server-side logic for displaying a single creator's preview page.
 import { notFound } from "next/navigation";
 import { API_BASE } from "../../../../lib/api";
 import { withBasePath } from "../../../../lib/paths";
@@ -5,6 +6,7 @@ import fs from "fs/promises";
 import path from "path";
 import CreatorPreviewClient from "./CreatorPreviewClient";
 
+// Type definitions for raw creator data from JSON and images.
 type PageRow = {
   ID?: string;
   uuid?: string;
@@ -40,6 +42,7 @@ type ImageRow = {
   id?: string;
 };
 
+// Utility function to convert an image file path to a displayable URL.
 const toImageUrl = (file?: string) => {
   if (!file) return null;
   const parts = file.split("/");
@@ -47,6 +50,7 @@ const toImageUrl = (file?: string) => {
   return withBasePath(`/api/clean-image/${encodeURIComponent(filename)}`);
 };
 
+// Default asynchronous server component for Creator Preview page.
 export default async function CreatorPreview({ params }: { params: { id: string } }) {
   const uuid = params.id;
 
@@ -54,6 +58,7 @@ export default async function CreatorPreview({ params }: { params: { id: string 
   let images: ImageRow[] = [];
 
   try {
+    // Attempt to fetch creator data from the API.
     const res = await fetch(`${API_BASE}/creators/${uuid}`, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
@@ -95,6 +100,7 @@ export default async function CreatorPreview({ params }: { params: { id: string 
     // fallback to local data below
   }
 
+  // Fallback to local JSON data if API fetch fails.
   if (!creator) {
     try {
       const repoRoot = path.join(process.cwd(), "..");
@@ -111,12 +117,15 @@ export default async function CreatorPreview({ params }: { params: { id: string 
     }
   }
 
+  // If no creator is found, return a 404.
   if (!creator) return notFound();
 
+  // Prepare data for the client component.
   const imagesLimited = images.slice(0, 7);
   const primaryImageUrl = toImageUrl(imagesLimited[0]?.file);
   const hairLength = creator["Hair length"] || creator["Hair lenght"];
 
+  // Define fields to display on the creator's profile.
   const fields: Array<[string, string | number | undefined]> = [
     ["Provider ID", creator.ID],
     ["Name", creator.name],
@@ -142,6 +151,7 @@ export default async function CreatorPreview({ params }: { params: { id: string 
     ["Services", creator.Services],
   ];
 
+  // Render the client-side CreatorPreviewClient component with fetched data.
   return (
     <CreatorPreviewClient
       title={creator.Title ?? creator.name ?? "Creator"}

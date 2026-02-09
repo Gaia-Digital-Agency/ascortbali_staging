@@ -1,3 +1,4 @@
+// This module defines routes for authenticated users to manage their profiles and data.
 import { Router } from "express";
 import { z } from "zod";
 import { getPool } from "../lib/pg.js";
@@ -5,6 +6,7 @@ import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth
 
 export const meRouter = Router();
 
+// Route to get the currently authenticated user's basic information.
 meRouter.get("/", requireAuth, async (req: AuthedRequest, res) => {
   res.json({
     id: req.user!.id,
@@ -13,6 +15,7 @@ meRouter.get("/", requireAuth, async (req: AuthedRequest, res) => {
   });
 });
 
+// Zod schema for validating user profile data.
 const UserProfileSchema = z.object({
   fullName: z.string().min(2).max(120),
   gender: z.enum(["female", "male", "transgender"]),
@@ -23,6 +26,7 @@ const UserProfileSchema = z.object({
   relationshipStatus: z.enum(["single", "married", "other"]),
 });
 
+// Route to get the authenticated user's profile details.
 meRouter.get("/user-profile", requireAuth, requireRole(["user"]), async (req: AuthedRequest, res) => {
   const pool = getPool();
   try {
@@ -57,6 +61,7 @@ meRouter.get("/user-profile", requireAuth, requireRole(["user"]), async (req: Au
   }
 });
 
+// Route to update or create the authenticated user's profile.
 meRouter.put("/user-profile", requireAuth, requireRole(["user"]), async (req: AuthedRequest, res) => {
   const parsed = UserProfileSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
@@ -97,6 +102,7 @@ meRouter.put("/user-profile", requireAuth, requireRole(["user"]), async (req: Au
   }
 });
 
+// Zod schema for validating creator profile data.
 const CreatorProfileSchema = z.object({
   title: z.string().max(255),
   url: z.string().max(2000),
@@ -132,6 +138,7 @@ const CreatorProfileSchema = z.object({
   availableFor: z.enum(["incall", "outcall", "both"]),
 });
 
+// Route to get the authenticated creator's profile details.
 meRouter.get("/creator-profile", requireAuth, requireRole(["creator"]), async (req: AuthedRequest, res) => {
   const pool = getPool();
   try {
@@ -184,6 +191,7 @@ meRouter.get("/creator-profile", requireAuth, requireRole(["creator"]), async (r
   }
 });
 
+// Route to update the authenticated creator's profile.
 meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (req: AuthedRequest, res) => {
   const parsed = CreatorProfileSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
@@ -307,6 +315,7 @@ meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (r
   }
 });
 
+// Route to get the authenticated creator's images.
 meRouter.get("/creator-images", requireAuth, requireRole(["creator"]), async (req: AuthedRequest, res) => {
   const pool = getPool();
   try {
@@ -325,11 +334,13 @@ meRouter.get("/creator-images", requireAuth, requireRole(["creator"]), async (re
   }
 });
 
+// Zod schema for validating creator image data.
 const CreatorImageSchema = z.object({
   sequenceNumber: z.coerce.number().int().min(1).max(7),
   imageFile: z.string().min(1),
 });
 
+// Route to create a new image for the authenticated creator.
 meRouter.post("/creator-images", requireAuth, requireRole(["creator"]), async (req: AuthedRequest, res) => {
   const parsed = CreatorImageSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
@@ -356,6 +367,7 @@ meRouter.post("/creator-images", requireAuth, requireRole(["creator"]), async (r
   }
 });
 
+// Route to update an existing image for the authenticated creator.
 meRouter.put("/creator-images/:imageId", requireAuth, requireRole(["creator"]), async (req: AuthedRequest, res) => {
   const parsed = CreatorImageSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
@@ -380,6 +392,7 @@ meRouter.put("/creator-images/:imageId", requireAuth, requireRole(["creator"]), 
   }
 });
 
+// Route to delete an image for the authenticated creator.
 meRouter.delete("/creator-images/:imageId", requireAuth, requireRole(["creator"]), async (req: AuthedRequest, res) => {
   const pool = getPool();
   try {

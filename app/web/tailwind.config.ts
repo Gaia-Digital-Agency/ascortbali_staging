@@ -1,14 +1,13 @@
+// This is the Tailwind CSS configuration file for the web application.
 import type { Config } from "tailwindcss";
 
 export default {
+  // Configure files to scan for Tailwind classes.
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  // Extend Tailwind's default theme with custom values.
   theme: {
     extend: {
-      /* -------------------------------------------------------
-       * BRAND COLORS
-       * Change these to reskin the entire app.
-       * Usage: className="bg-brand-bg text-brand-gold" etc.
-       * ------------------------------------------------------- */
+      // Define custom brand colors for easy theming.
       colors: {
         brand: {
           bg: "#0b0b0b",        // Page background (near-black)
@@ -22,47 +21,30 @@ export default {
         },
       },
 
-      /* -------------------------------------------------------
-       * FONTS
-       * display = headings (Playfair Display, serif)
-       * sans    = body text (Inter, sans-serif)
-       * Set via CSS variables in layout.tsx (next/font/google)
-       * ------------------------------------------------------- */
+      // Define custom font families, linked to CSS variables.
       fontFamily: {
-        display: ["var(--font-display)", "ui-serif", "Georgia", "serif"],
-        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "ui-serif", "Georgia", "serif"], // Headings
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],     // Body text
       },
 
-      /* -------------------------------------------------------
-       * LETTER SPACING
-       * luxe = tighter spacing for subtitles / labels (0.18em)
-       * Default heading tracking is 0.22em (set inline)
-       * ------------------------------------------------------- */
+      // Define custom letter spacing utilities.
       letterSpacing: {
-        luxe: "0.18em",
+        luxe: "0.18em", // Tighter spacing for subtitles/labels
       },
 
-      /* -------------------------------------------------------
-       * SHADOWS
-       * luxe = deep card shadow for elevated panels
-       * ------------------------------------------------------- */
+      // Define custom box shadow utilities.
       boxShadow: {
-        luxe: "0 10px 40px rgba(0,0,0,0.55)",
+        luxe: "0 10px 40px rgba(0,0,0,0.55)", // Deep card shadow
       },
 
-      /* -------------------------------------------------------
-       * BACKGROUND IMAGES
-       * hero-radial = subtle gold glow at top of page
-       * grain       = SVG noise texture overlay (14% opacity)
-       * Both applied to <body> in globals.css
-       * ------------------------------------------------------- */
+      // Define custom background images.
       backgroundImage: {
         "hero-radial":
-          "radial-gradient(80% 60% at 50% 0%, rgba(201,162,77,0.20) 0%, rgba(11,11,11,0) 60%)",
+          "radial-gradient(80% 60% at 50% 0%, rgba(201,162,77,0.20) 0%, rgba(11,11,11,0) 60%)", // Subtle gold glow
         "grain":
-          "url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"160\"%3E%3Cfilter id=\"n\"%3E%3CfeTurbulence type=\"fractalNoise\" baseFrequency=\".9\" numOctaves=\"3\" stitchTiles=\"stitch\"/%3E%3C/filter%3E%3Crect width=\"160\" height=\"160\" filter=\"url(%23n)\" opacity=\".14\"/%3E%3C/svg%3E')",
+          "url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"160\"%3E%3Cfilter id=\"n\"%3E%3CfeTurbulence type=\"fractalNoise\" baseFrequency=\".9\" numOctaves=\"3\" stitchTiles=\"stitch\"/%3E%3C/filter%3E%3Crect width=\"160\" height=\"160\" filter=\"url(%23n)\" opacity=\".14\"/%3E%3C/svg%3E')", // SVG noise texture overlay
       },
     },
   },
-  plugins: [],
+  plugins: [], // No additional Tailwind plugins are used.
 } satisfies Config;

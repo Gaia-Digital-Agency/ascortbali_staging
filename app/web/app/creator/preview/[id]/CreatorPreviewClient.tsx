@@ -16,13 +16,14 @@ type Props = {
 };
 
 export default function CreatorPreviewClient(props: Props) {
+  // Any authenticated role (user/creator/admin) should be able to view the full preview.
   const [canViewFull, setCanViewFull] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const me = await apiFetch("/me");
-        setCanViewFull(me?.role === "creator" || me?.role === "admin");
+        setCanViewFull(Boolean(me?.role));
       } catch {
         setCanViewFull(false);
       }
@@ -56,7 +57,7 @@ export default function CreatorPreviewClient(props: Props) {
         <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-6">
           {!canViewFull ? (
             <div className="mb-3 rounded-xl border border-brand-gold/40 bg-brand-surface2/60 p-3 text-xs text-brand-muted">
-              Visitor/User view: details are blurred. Login as creator/admin to view full profile.
+              Visitor view: details are blurred. Login to view full profile.
               <div className="mt-2 flex gap-2">
                 <Link className="btn btn-outline px-3 py-2 text-[10px]" href="/user">
                   USER LOGIN
