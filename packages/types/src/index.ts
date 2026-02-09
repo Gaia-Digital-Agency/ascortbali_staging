@@ -1,11 +1,16 @@
+// This module defines common TypeScript types used across the application.
+
+// Defines the possible roles for a user.
 export type Role = "customer" | "provider" | "admin";
 
+// Defines the structure of JWT claims.
 export type JwtClaims = {
   sub: string;
   role: Role;
   email: string;
 };
 
+// Defines the structure of a service list item.
 export type ServiceListItem = {
   id: string;
   creatorId: string;
@@ -19,6 +24,7 @@ export type ServiceListItem = {
   createdAt: string;
 };
 
+// Defines the structure for paginated responses.
 export type Paged<T> = {
   items: T[];
   page: number;
@@ -26,6 +32,7 @@ export type Paged<T> = {
   total: number;
 };
 
+// Defines the structure for API error responses.
 export type ApiError = {
   error: string;
   details?: unknown;

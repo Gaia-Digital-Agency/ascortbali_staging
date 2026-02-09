@@ -1,5 +1,7 @@
+// This module provides functions for interacting with Google Cloud Storage (GCS).
 import { Storage } from "@google-cloud/storage";
 
+// Configure GCS bucket name and object prefixes from environment variables.
 // Use bracket access so Next/webpack doesn't eagerly inline env vars at build time.
 // We want the runtime env from `next start` / PM2 to be honored.
 const bucketName = process.env["GCS_BUCKET_NAME"] ?? "gda-s01";
@@ -7,21 +9,26 @@ const rawPrefix = process.env["GCS_UPLOAD_PREFIX"] ?? "baligirls/uploads";
 const objectPrefix = rawPrefix.replace(/^\/+|\/+$/g, "");
 const storage = new Storage();
 
+// Returns the GCS bucket instance.
 function bucket() {
   return storage.bucket(bucketName);
 }
 
+// Constructs the full GCS object key for a given filename.
 export function getObjectKey(filename: string) {
   return `${objectPrefix}/${filename}`.replace(/\/{2,}/g, "/");
 }
 
+// Configure GCS static asset prefix from environment variables.
 const rawStaticPrefix = process.env["GCS_STATIC_PREFIX"] ?? "baligirls/static";
 const staticPrefix = rawStaticPrefix.replace(/^\/+|\/+$/g, "");
 
+// Constructs the full GCS object key for a static asset.
 export function getStaticKey(relPath: string) {
   return `${staticPrefix}/${relPath}`.replace(/\/{2,}/g, "/");
 }
 
+// Uploads an object to GCS.
 export async function uploadObject(params: {
   objectKey: string;
   buffer: Buffer;
@@ -38,6 +45,7 @@ export async function uploadObject(params: {
   });
 }
 
+// Downloads an object from GCS.
 export async function downloadObject(objectKey: string) {
   const file = bucket().file(objectKey);
   const [exists] = await file.exists();

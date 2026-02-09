@@ -1,3 +1,4 @@
+// This module defines routes for capturing and reporting visitor analytics.
 import { Router } from "express";
 import { z } from "zod";
 import { hmacIp } from "../lib/security.js";
@@ -6,8 +7,10 @@ import { getPool } from "../lib/pg.js";
 
 export const analyticsRouter = Router();
 
+// Flag to track if the analytics table has been created.
 let analyticsTableReady = false;
 
+// Ensures the visitor_analytics table exists before processing requests.
 async function ensureAnalyticsTable() {
   if (analyticsTableReady) return;
   const pool = getPool();
@@ -26,12 +29,14 @@ async function ensureAnalyticsTable() {
   analyticsTableReady = true;
 }
 
+// Zod schema for validating visitor data.
 const VisitSchema = z.object({
   country: z.string().max(80).optional().nullable(),
   city: z.string().max(80).optional().nullable(),
   userAgent: z.string().max(300).optional().nullable(),
 });
 
+// Route to record a new visitor or update an existing one.
 analyticsRouter.post("/visit", async (req, res) => {
   const parsed = VisitSchema.safeParse(req.body ?? {});
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
@@ -45,6 +50,7 @@ analyticsRouter.post("/visit", async (req, res) => {
     const city = parsed.data.city ?? null;
     const userAgent = parsed.data.userAgent ?? null;
 
+    // Insert or update visitor data in the database.
     const result = await pool.query(
       `
       INSERT INTO visitor_analytics (ip_hash, country, city, user_agent, first_seen, last_seen, total_visits)
@@ -67,6 +73,7 @@ analyticsRouter.post("/visit", async (req, res) => {
   }
 });
 
+// Route to get the current visitor count and location.
 analyticsRouter.get("/status", async (req, res) => {
   try {
     await ensureAnalyticsTable();
@@ -74,6 +81,7 @@ analyticsRouter.get("/status", async (req, res) => {
     const ip = req.ip || "0.0.0.0";
     const ipHash = hmacIp(ip);
 
+    // Get total visitor count and the current visitor's location.
     const [countRes, visitorRes] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS count FROM visitor_analytics"),
       pool.query("SELECT city, country FROM visitor_analytics WHERE ip_hash = $1 LIMIT 1", [ipHash]),
@@ -89,10 +97,12 @@ analyticsRouter.get("/status", async (req, res) => {
   }
 });
 
+// Zod schema for validating link data.
 const LinkSchema = z.object({
   visitorId: z.string().uuid(),
 });
 
+// Route to link a visitor ID to a user ID.
 analyticsRouter.post("/link", requireAuth, async (req: AuthedRequest, res) => {
   const parsed = LinkSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });

@@ -1,3 +1,4 @@
+// This module defines the User Dashboard component for managing user profiles.
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,6 +6,7 @@ import Link from "next/link";
 import { apiFetch, clearTokens } from "../../../lib/api";
 import { withBasePath } from "../../../lib/paths";
 
+// Type definition for a user profile.
 type UserProfile = {
   fullName: string;
   gender: "female" | "male" | "transgender";
@@ -15,6 +17,7 @@ type UserProfile = {
   relationshipStatus: "single" | "married" | "other";
 };
 
+// Default user profile values.
 const defaultProfile: UserProfile = {
   fullName: "",
   gender: "female",
@@ -25,13 +28,16 @@ const defaultProfile: UserProfile = {
   relationshipStatus: "single",
 };
 
+// UserDashboard functional component.
 export default function UserDashboard() {
+  // State variables for user authentication info, profile data, saving status, and messages.
   const [me, setMe] = useState<{ username: string; role: string } | null>(null);
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Effect hook to fetch user data and profile on component mount.
   useEffect(() => {
     (async () => {
       try {
@@ -50,9 +56,11 @@ export default function UserDashboard() {
     })();
   }, []);
 
+  // Function to update a specific profile field.
   const update = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) =>
     setProfile((prev) => ({ ...prev, [key]: value }));
 
+  // Function to save the user profile to the API.
   const save = async () => {
     setSaving(true);
     setError(null);
@@ -70,6 +78,7 @@ export default function UserDashboard() {
     }
   };
 
+  // Function to log out the user.
   const logout = () => {
     clearTokens();
     window.location.assign(withBasePath("/"));
@@ -77,6 +86,7 @@ export default function UserDashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Header section with title and navigation buttons. */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-xs tracking-luxe text-brand-muted">USER</div>
@@ -93,8 +103,10 @@ export default function UserDashboard() {
         </div>
       </div>
 
+      {/* User profile management section. */}
       <section className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7">
         <div className="text-xs tracking-luxe text-brand-muted">ALL FIELDS REQUIRED</div>
+        {/* Input fields for various profile details. */}
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <Field label="FULL NAME">
             <input
@@ -134,6 +146,7 @@ export default function UserDashboard() {
           </Field>
         </div>
 
+        {/* Radio button groups for gender, preferred contact, and relationship status. */}
         <div className="mt-6 grid gap-6 md:grid-cols-3">
           <RadioGroup
             label="GENDER"
@@ -155,9 +168,11 @@ export default function UserDashboard() {
           />
         </div>
 
+        {/* Error and message display. */}
         {error ? <div className="mt-4 text-xs text-red-400">{error}</div> : null}
         {message ? <div className="mt-4 text-xs text-emerald-400">{message}</div> : null}
 
+        {/* Save profile button. */}
         <div className="mt-6">
           <button onClick={save} disabled={saving} className="btn btn-primary py-3">
             {saving ? "SAVING..." : "SAVE PROFILE"}
@@ -168,6 +183,7 @@ export default function UserDashboard() {
   );
 }
 
+// Helper component for rendering form fields with labels.
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -177,6 +193,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+// Helper component for rendering radio button groups.
 function RadioGroup({
   label,
   value,

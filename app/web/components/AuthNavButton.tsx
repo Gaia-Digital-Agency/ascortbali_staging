@@ -1,3 +1,4 @@
+// This module provides a navigation button that dynamically changes based on user authentication status.
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,9 +6,11 @@ import Link from "next/link";
 import { clearTokens } from "../lib/api";
 import { withBasePath } from "../lib/paths";
 
+// AuthNavButton component.
 export function AuthNavButton() {
   const [loggedIn, setLoggedIn] = useState(false);
 
+  // Effect hook to check and update login status, and listen for auth changes.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const check = () => setLoggedIn(Boolean(window.sessionStorage.getItem("accessToken")));
@@ -22,6 +25,7 @@ export function AuthNavButton() {
     };
   }, []);
 
+  // Renders login/register buttons if not logged in.
   if (!loggedIn) {
     return (
       <div className="flex items-center gap-2">
@@ -35,6 +39,7 @@ export function AuthNavButton() {
     );
   }
 
+  // Renders a logout button if logged in.
   return (
     <button
       onClick={() => {

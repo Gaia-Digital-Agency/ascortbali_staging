@@ -1,3 +1,4 @@
+// This module defines authentication routes for user login, token refresh, and logout.
 import { Router } from "express";
 import { z } from "zod";
 import { getPool } from "../lib/pg.js";
@@ -6,12 +7,14 @@ import { signAccessToken, signRefreshToken, verifyJwt } from "../lib/jwt.js";
 
 export const authRouter = Router();
 
+// Zod schema for validating login credentials.
 const LoginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
   portal: z.enum(["admin", "user", "creator"]),
 });
 
+// POST route for user login.
 authRouter.post("/login", rateLimit, async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -23,6 +26,7 @@ authRouter.post("/login", rateLimit, async (req, res) => {
   const password = parsed.data.password.trim();
 
   try {
+    // Handle creator login.
     if (parsed.data.portal === "creator") {
       const { rows } = await pool.query(
         `
@@ -48,6 +52,7 @@ authRouter.post("/login", rateLimit, async (req, res) => {
       return res.json({ accessToken, refreshToken });
     }
 
+    // Handle admin/user login.
     const { rows } = await pool.query(
       `
       SELECT id::text AS id, role, username, password
@@ -75,8 +80,10 @@ authRouter.post("/login", rateLimit, async (req, res) => {
   }
 });
 
+// Zod schema for validating refresh token request.
 const RefreshSchema = z.object({ refreshToken: z.string().min(10) });
 
+// POST route for refreshing access tokens using a refresh token.
 authRouter.post("/refresh", rateLimit, async (req, res) => {
   const parsed = RefreshSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
@@ -92,6 +99,7 @@ authRouter.post("/refresh", rateLimit, async (req, res) => {
   }
 });
 
+// POST route for user logout (currently a no-op).
 authRouter.post("/logout", async (_req, res) => {
   res.json({ ok: true });
 });

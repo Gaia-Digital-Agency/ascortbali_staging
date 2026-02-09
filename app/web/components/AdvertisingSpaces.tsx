@@ -1,21 +1,25 @@
+// This module defines components and logic for displaying advertising spaces.
 "use client";
 
 import { useEffect, useState } from "react";
 import { API_BASE } from "../lib/api";
 import { withBasePath } from "../lib/paths";
 
+// Type definition for an advertising space.
 type AdSpace = {
   slot: "home-1" | "home-2" | "home-3" | "bottom";
   image: string | null;
   text: string | null;
 };
 
+// Hardcoded links for advertising slots.
 const adLinkBySlot: Record<string, string> = {
   "home-1": "https://lightcyan-horse-210187.hostingersite.com/",
   "home-2": "https://www.humanspedia.com/",
   "home-3": "https://www.baligirls.com/",
 };
 
+// Fallback advertising data to be used if API call fails or is empty.
 const fallbackAds: AdSpace[] = [
   { slot: "home-1", image: withBasePath("/api/admin-asset/unique.png"), text: null },
   { slot: "home-2", image: withBasePath("/api/admin-asset/humapedia.png"), text: null },
@@ -23,6 +27,7 @@ const fallbackAds: AdSpace[] = [
   { slot: "bottom", image: null, text: "Your Ads Here" },
 ];
 
+// Normalizes an ad image URL to include the base path if necessary.
 function normalizeAdImage(image: string | null) {
   const raw = (image ?? "").trim();
   if (!raw) return null;
@@ -32,10 +37,12 @@ function normalizeAdImage(image: string | null) {
   return raw;
 }
 
+// Normalizes an entire advertising space object.
 function normalizeAdSpace(ad: AdSpace): AdSpace {
   return { ...ad, image: normalizeAdImage(ad.image) };
 }
 
+// Custom hook to fetch and manage advertising spaces.
 export function useAdSpaces() {
   const [ads, setAds] = useState<AdSpace[]>(fallbackAds);
 
@@ -65,6 +72,7 @@ export function useAdSpaces() {
   return ads;
 }
 
+// Component to display the main advertising spaces on the homepage.
 export function MainAdSpaces() {
   const ads = useAdSpaces();
   const homeAds = ads.filter((ad) => ad.slot !== "bottom");
@@ -92,6 +100,7 @@ export function MainAdSpaces() {
   );
 }
 
+// Component to display the bottom advertising card.
 export function BottomAdCard() {
   const ads = useAdSpaces();
   const bottom = ads.find((ad) => ad.slot === "bottom");

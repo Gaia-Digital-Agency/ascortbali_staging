@@ -1,6 +1,8 @@
+// This module defines the Services Page component, displaying a paginated list of available services.
 import Link from "next/link";
 import { API_BASE } from "../../lib/api";
 
+// Type definition for a Service item displayed in the list.
 type Service = {
   id: string;
   title: string;
@@ -10,11 +12,13 @@ type Service = {
   featuredRank: number | null;
 };
 
+// ServicesPage asynchronous server component.
 export default async function ServicesPage({
   searchParams,
 }: {
   searchParams: { q?: string; page?: string };
 }) {
+  // Parse and normalize search parameters for pagination and search query.
   const page = Number(searchParams.page ?? "1");
   const q = searchParams.q ?? "";
   const qs = new URLSearchParams({
@@ -24,11 +28,13 @@ export default async function ServicesPage({
     ...(q ? { q } : {}),
   });
 
+  // Fetch services data from the API.
   const res = await fetch(`${API_BASE}/services?${qs.toString()}`, { cache: "no-store" });
   const data = await res.json();
 
   return (
     <div className="space-y-7">
+      {/* Header section with title, search input, and navigation. */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-xs tracking-luxe text-brand-muted">CATALOG</div>
@@ -42,6 +48,7 @@ export default async function ServicesPage({
           BACK HOME
         </Link>
 
+        {/* Search form for services. */}
         <form className="flex w-full gap-3 md:w-auto" action="/services" method="get">
           <input
             name="q"
@@ -53,6 +60,7 @@ export default async function ServicesPage({
         </form>
       </div>
 
+      {/* Grid displaying individual service cards. */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {data.items.map((s: Service) => (
           <Link
@@ -73,6 +81,7 @@ export default async function ServicesPage({
         ))}
       </div>
 
+      {/* Pagination controls. */}
       <div className="flex items-center justify-between border-t border-brand-line pt-6 text-xs tracking-[0.22em] text-brand-muted">
         <Link
           className={page > 1 ? "hover:text-brand-text" : "pointer-events-none opacity-40"}
