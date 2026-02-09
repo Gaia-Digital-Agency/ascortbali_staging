@@ -1,3 +1,4 @@
+// This is the main homepage component, displaying creator listings and advertising spaces.
 import Link from "next/link";
 import { BottomAdCard, MainAdSpaces } from "../components/AdvertisingSpaces";
 import { API_BASE } from "../lib/api";
@@ -5,6 +6,7 @@ import { withBasePath } from "../lib/paths";
 import fs from "fs/promises";
 import path from "path";
 
+// Type definitions for Creator and raw page/image data.
 type Creator = {
   uuid: string;
   model_name?: string | null;
@@ -34,6 +36,7 @@ type ImageRow = {
   file?: string;
 };
 
+// Utility function to construct an image URL from a filename.
 const toImageUrl = (file?: string | null) => {
   if (!file) return null;
   const parts = file.split("/");
@@ -41,6 +44,7 @@ const toImageUrl = (file?: string | null) => {
   return withBasePath(`/api/clean-image/${encodeURIComponent(filename)}`);
 };
 
+// Helper functions for pagination logic.
 const getPageSize = (page: number) => {
   if (page === 1 || page === 2) return 50;
   if (page === 3) return 35;
@@ -61,6 +65,7 @@ const getTotalPages = (totalSlots: number) => {
   return 3 + Math.ceil((totalSlots - 135) / 50);
 };
 
+// Loads creator data from local JSON files as a fallback.
 const loadLocalCreators = async (): Promise<Creator[]> => {
   try {
     const repoRoot = path.join(process.cwd(), "..");
@@ -88,6 +93,7 @@ const loadLocalCreators = async (): Promise<Creator[]> => {
   }
 };
 
+// Helper function to categorize age into bands.
 const ageBand = (age?: number | null) => {
   if (!age || age < 18) return "unknown";
   if (age <= 24) return "18-24";
@@ -96,13 +102,16 @@ const ageBand = (age?: number | null) => {
   return "35+";
 };
 
+// Helper function to normalize string values for comparison.
 const normalize = (value?: string | null) => (value ?? "").trim().toLowerCase();
 
+// Main page component.
 export default async function Page({
   searchParams,
 }: {
   searchParams?: { page?: string; nationality?: string; orientation?: string; age?: string; height?: string; bust_size?: string };
 }) {
+  // Parse and normalize search parameters for filtering.
   const page = Math.max(Number(searchParams?.page ?? "1") || 1, 1);
   const selectedNationality = normalize(searchParams?.nationality);
   const selectedOrientation = normalize(searchParams?.orientation);
@@ -112,24 +121,28 @@ export default async function Page({
   let creators: Creator[] = [];
 
   try {
+    // Fetch creators from the API.
     const res = await fetch(`${API_BASE}/creators?page=1&limit=500`, { cache: "no-store" });
     if (res.ok) {
       const data = (await res.json()) as { items?: Creator[] };
       creators = Array.isArray(data.items) ? data.items : [];
     }
   } catch {
+    // Fallback to local creators if API fetch fails.
     creators = [];
   }
   if (creators.length === 0) {
     creators = await loadLocalCreators();
   }
 
+  // Prepare options for filter dropdowns.
   const nationalityOptions = Array.from(new Set(creators.map((c) => (c.nationality ?? "").trim()).filter(Boolean))).sort();
   const orientationOptions = Array.from(new Set(creators.map((c) => (c.orientation ?? "").trim()).filter(Boolean))).sort();
   const heightOptions = Array.from(new Set(creators.map((c) => (c.height ?? "").trim()).filter(Boolean))).sort();
   const bustSizeOptions = Array.from(new Set(creators.map((c) => (c.bust_size ?? "").trim()).filter(Boolean))).sort();
   const ageOptions = ["18-24", "25-29", "30-34", "35+"];
 
+  // Apply filters to the creators list.
   const hasActiveFilters = Boolean(selectedNationality || selectedOrientation || selectedAge || selectedHeight || selectedBustSize);
   const filteredCreators = creators.filter((creator) => {
     if (selectedNationality && normalize(creator.nationality) !== selectedNationality) return false;
@@ -142,6 +155,7 @@ export default async function Page({
 
   const activeCreators = hasActiveFilters ? filteredCreators : creators;
 
+  // Calculate pagination details based on filtered creators.
   const baselineSlots = 135;
   const totalSlots = hasActiveFilters ? activeCreators.length : Math.max(baselineSlots, activeCreators.length);
   const totalPages = getTotalPages(totalSlots);
@@ -151,6 +165,7 @@ export default async function Page({
   const pageEnd = Math.min(pageStart + pageSize, totalSlots);
   const pageSlots = Array.from({ length: Math.max(pageEnd - pageStart, 0) }, (_, idx) => pageStart + idx);
 
+  // Function to create pagination hrefs with current filters.
   const makePageHref = (targetPage: number) => {
     const params = new URLSearchParams();
     params.set("page", String(targetPage));
@@ -164,6 +179,7 @@ export default async function Page({
 
   return (
     <div className="space-y-14">
+      {/* Main advertising section */}
       <section className="space-y-6">
         <div>
           <div className="text-xs tracking-luxe text-brand-muted">HOMEPAGE ADS</div>
@@ -172,6 +188,7 @@ export default async function Page({
       </section>
 
       <section className="space-y-6">
+        {/* Creator filter dropdowns */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           <select className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-xs tracking-[0.18em] text-brand-muted" defaultValue={selectedNationality || ""} name="nationality" form="creator-filter-form">
             <option value="">ALL NATIONALITIES</option>
@@ -215,6 +232,7 @@ export default async function Page({
           </select>
         </div>
 
+        {/* Filter action buttons */}
         <form id="creator-filter-form" action="/" className="flex gap-3">
           <button className="btn btn-outline py-2" type="submit">
             APPLY FILTERS
@@ -224,6 +242,7 @@ export default async function Page({
           </Link>
         </form>
 
+        {/* Creator listing header and pagination */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="text-xs tracking-luxe text-brand-muted">GIRLS</div>
@@ -249,11 +268,13 @@ export default async function Page({
           </div>
         </div>
 
+        {/* Display filtered and paginated creators */}
         <div className="mx-auto grid max-w-xs gap-4 sm:max-w-none sm:grid-cols-2 lg:grid-cols-5">
           {pageSlots.map((slotIndex) => {
             const creator = activeCreators[slotIndex];
             if (!creator) {
               return (
+                // Placeholder for empty slots
                 <div
                   key={`slot-${slotIndex + 1}`}
                   className="aspect-[9/16] overflow-hidden rounded-2xl border border-brand-line bg-brand-surface/40"
@@ -270,6 +291,7 @@ export default async function Page({
 
             const displayName = creator.model_name || creator.username || "Creator";
             return (
+              // Creator card link
               <Link
                 key={creator.uuid}
                 href={`/creator/preview/${creator.uuid}`}
@@ -277,7 +299,7 @@ export default async function Page({
               >
                 <div className="h-[90%] overflow-hidden">
                   <img
-                    src={toImageUrl(creator.image_file) ?? "/placeholders/card-1.jpg"}
+                    src={toImageUrl(creator.image_file) ?? withBasePath("/placeholders/card-1.jpg")}
                     alt={displayName}
                     className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
                   />
@@ -291,6 +313,7 @@ export default async function Page({
         </div>
       </section>
 
+      {/* Bottom advertising section */}
       <section className="space-y-4">
         <div className="text-xs tracking-luxe text-brand-muted">BOTTOM AD</div>
         <BottomAdCard />

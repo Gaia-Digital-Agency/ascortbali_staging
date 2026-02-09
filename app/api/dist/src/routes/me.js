@@ -1,8 +1,69 @@
+// This module defines routes for authenticated users to manage their profiles and data.
 import { Router } from "express";
 import { z } from "zod";
 import { getPool } from "../lib/pg.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 export const meRouter = Router();
+const normalizeEnum = (value) => String(value ?? "").trim().toLowerCase();
+const normalizeGender = (value) => {
+    const v = normalizeEnum(value);
+    if (v === "female" || v === "f")
+        return "female";
+    if (v === "male" || v === "m")
+        return "male";
+    if (v === "trans" || v === "transgender")
+        return "transgender";
+    return v;
+};
+const normalizeYesNo = (value) => {
+    const v = normalizeEnum(value);
+    if (v === "yes" || v === "y" || v === "true" || v === "1")
+        return "yes";
+    if (v === "no" || v === "n" || v === "false" || v === "0")
+        return "no";
+    return v;
+};
+const normalizeOrientation = (value) => {
+    const v = normalizeEnum(value);
+    if (v === "straight")
+        return "straight";
+    if (v === "bisexual" || v === "bi")
+        return "bisexual";
+    if (v === "lesbian")
+        return "lesbian";
+    if (v === "gay")
+        return "gay";
+    if (!v)
+        return v;
+    return "other";
+};
+const normalizeMeetingWith = (value) => {
+    const v = normalizeEnum(value);
+    if (v === "men" || v === "man" || v === "male")
+        return "men";
+    if (v === "women" || v === "woman" || v === "female")
+        return "women";
+    if (v === "couples" || v === "couple")
+        return "couples";
+    if (v.includes("man+woman") || v.includes("man + woman"))
+        return "couples";
+    if (v === "all")
+        return "all";
+    return v;
+};
+const normalizeAvailableFor = (value) => {
+    const v = normalizeEnum(value);
+    if (v.includes("outcall") && v.includes("incall"))
+        return "both";
+    if (v === "both")
+        return "both";
+    if (v.includes("incall"))
+        return "incall";
+    if (v.includes("outcall"))
+        return "outcall";
+    return v;
+};
+// Route to get the currently authenticated user's basic information.
 meRouter.get("/", requireAuth, async (req, res) => {
     res.json({
         id: req.user.id,
@@ -10,6 +71,7 @@ meRouter.get("/", requireAuth, async (req, res) => {
         username: req.user.username,
     });
 });
+// Zod schema for validating user profile data.
 const UserProfileSchema = z.object({
     fullName: z.string().min(2).max(120),
     gender: z.enum(["female", "male", "transgender"]),
@@ -19,6 +81,7 @@ const UserProfileSchema = z.object({
     preferredContact: z.enum(["whatsapp", "telegram", "wechat"]),
     relationshipStatus: z.enum(["single", "married", "other"]),
 });
+// Route to get the authenticated user's profile details.
 meRouter.get("/user-profile", requireAuth, requireRole(["user"]), async (req, res) => {
     const pool = getPool();
     try {
@@ -45,10 +108,12 @@ meRouter.get("/user-profile", requireAuth, requireRole(["user"]), async (req, re
             relationshipStatus: rows[0].relationship_status,
         });
     }
-    catch {
+    catch (err) {
+        console.error("GET /me/user-profile failed", { userId: req.user?.id, err });
         return res.status(500).json({ error: "profile_load_failed" });
     }
 });
+// Route to update or create the authenticated user's profile.
 meRouter.put("/user-profile", requireAuth, requireRole(["user"]), async (req, res) => {
     const parsed = UserProfileSchema.safeParse(req.body);
     if (!parsed.success)
@@ -56,7 +121,7 @@ meRouter.put("/user-profile", requireAuth, requireRole(["user"]), async (req, re
     const pool = getPool();
     const p = parsed.data;
     try {
-        const { rows } = await pool.query(`
+        const upsertRes = await pool.query(`
       INSERT INTO user_profiles (
         account_id, full_name, gender, age_group, nationality, city, preferred_contact, relationship_status
       )
@@ -72,20 +137,41 @@ meRouter.put("/user-profile", requireAuth, requireRole(["user"]), async (req, re
         updated_at = NOW()
       RETURNING full_name, gender, age_group, nationality, city, preferred_contact, relationship_status
       `, [req.user.id, p.fullName, p.gender, p.ageGroup, p.nationality, p.city, p.preferredContact, p.relationshipStatus]);
+        // Defensive: if RETURNING is unexpectedly empty (seen in some managed PG/proxy setups),
+        // follow up with a SELECT so the request still succeeds.
+        let row = upsertRes.rows[0];
+        if (!row) {
+            const { rows } = await pool.query(`
+        SELECT full_name,
+               gender,
+               age_group,
+               nationality,
+               city,
+               preferred_contact,
+               relationship_status
+          FROM user_profiles
+         WHERE account_id = $1::uuid
+        `, [req.user.id]);
+            row = rows[0];
+        }
+        if (!row)
+            return res.status(500).json({ error: "profile_save_failed" });
         return res.json({
-            fullName: rows[0].full_name,
-            gender: rows[0].gender,
-            ageGroup: rows[0].age_group,
-            nationality: rows[0].nationality,
-            city: rows[0].city,
-            preferredContact: rows[0].preferred_contact,
-            relationshipStatus: rows[0].relationship_status,
+            fullName: row.full_name,
+            gender: row.gender,
+            ageGroup: row.age_group,
+            nationality: row.nationality,
+            city: row.city,
+            preferredContact: row.preferred_contact,
+            relationshipStatus: row.relationship_status,
         });
     }
-    catch {
+    catch (err) {
+        console.error("PUT /me/user-profile failed", { userId: req.user?.id, err });
         return res.status(500).json({ error: "profile_save_failed" });
     }
 });
+// Zod schema for validating creator profile data.
 const CreatorProfileSchema = z.object({
     title: z.string().max(255),
     url: z.string().max(2000),
@@ -93,7 +179,7 @@ const CreatorProfileSchema = z.object({
     lastSeen: z.string().max(40),
     notes: z.string().max(4000),
     modelName: z.string().min(2).max(100),
-    gender: z.enum(["female", "male", "transgender"]),
+    gender: z.preprocess(normalizeGender, z.enum(["female", "male", "transgender"])),
     age: z.coerce.number().int().min(18).max(70),
     location: z.string().max(100),
     eyes: z.string().max(20),
@@ -112,14 +198,15 @@ const CreatorProfileSchema = z.object({
     cellPhone: z.string().max(50),
     country: z.string().min(2).max(50),
     city: z.string().min(2).max(50),
-    orientation: z.enum(["straight", "bisexual", "lesbian", "gay", "other"]),
-    smoker: z.enum(["yes", "no"]),
-    tattoo: z.enum(["yes", "no"]),
-    piercing: z.enum(["yes", "no"]),
+    orientation: z.preprocess(normalizeOrientation, z.enum(["straight", "bisexual", "lesbian", "gay", "other"])),
+    smoker: z.preprocess(normalizeYesNo, z.enum(["yes", "no"])),
+    tattoo: z.preprocess(normalizeYesNo, z.enum(["yes", "no"])),
+    piercing: z.preprocess(normalizeYesNo, z.enum(["yes", "no"])),
     services: z.string().min(2),
-    meetingWith: z.enum(["men", "women", "couples", "all"]),
-    availableFor: z.enum(["incall", "outcall", "both"]),
+    meetingWith: z.preprocess(normalizeMeetingWith, z.enum(["men", "women", "couples", "all"])),
+    availableFor: z.preprocess(normalizeAvailableFor, z.enum(["incall", "outcall", "both"])),
 });
+// Route to get the authenticated creator's profile details.
 meRouter.get("/creator-profile", requireAuth, requireRole(["creator"]), async (req, res) => {
     const pool = getPool();
     try {
@@ -164,12 +251,26 @@ meRouter.get("/creator-profile", requireAuth, requireRole(["creator"]), async (r
       `, [req.user.id]);
         if (!rows[0])
             return res.status(404).json({ error: "not_found" });
-        return res.json(rows[0]);
+        const r = rows[0];
+        // Normalize enum-like fields to the API's canonical values so the frontend can
+        // round-trip data without failing Zod validation on save.
+        return res.json({
+            ...r,
+            gender: normalizeGender(r.gender),
+            orientation: normalizeOrientation(r.orientation),
+            smoker: normalizeYesNo(r.smoker),
+            tattoo: normalizeYesNo(r.tattoo),
+            piercing: normalizeYesNo(r.piercing),
+            meeting_with: normalizeMeetingWith(r.meeting_with),
+            available_for: normalizeAvailableFor(r.available_for),
+        });
     }
-    catch {
+    catch (err) {
+        console.error("GET /me/creator-profile failed", { userId: req.user?.id, err });
         return res.status(500).json({ error: "creator_load_failed" });
     }
 });
+// Route to update the authenticated creator's profile.
 meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (req, res) => {
     const parsed = CreatorProfileSchema.safeParse(req.body);
     if (!parsed.success)
@@ -177,7 +278,7 @@ meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (r
     const p = parsed.data;
     const pool = getPool();
     try {
-        const { rows } = await pool.query(`
+        const updateRes = await pool.query(`
       UPDATE providers
          SET title = $2,
              url = $3,
@@ -283,14 +384,68 @@ meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (r
             p.meetingWith,
             p.availableFor,
         ]);
-        if (!rows[0])
+        let row = updateRes.rows[0];
+        if (!row) {
+            const { rows } = await pool.query(`
+        SELECT uuid::text AS uuid,
+               provider_id,
+               username,
+               title,
+               url,
+               temp_password,
+               last_seen,
+               notes,
+               model_name,
+               gender,
+               age,
+               location,
+               eyes,
+               hair_color,
+               hair_length,
+               pubic_hair,
+               bust_size,
+               bust_type,
+               travel,
+               weight,
+               height,
+               ethnicity,
+               nationality,
+               languages,
+               phone_number,
+               cell_phone,
+               country,
+               city,
+               orientation,
+               smoker,
+               tattoo,
+               piercing,
+               services,
+               meeting_with,
+               available_for
+          FROM providers
+         WHERE uuid = $1::uuid
+        `, [req.user.id]);
+            row = rows[0];
+        }
+        if (!row)
             return res.status(404).json({ error: "not_found" });
-        return res.json(rows[0]);
+        return res.json({
+            ...row,
+            gender: normalizeGender(row.gender),
+            orientation: normalizeOrientation(row.orientation),
+            smoker: normalizeYesNo(row.smoker),
+            tattoo: normalizeYesNo(row.tattoo),
+            piercing: normalizeYesNo(row.piercing),
+            meeting_with: normalizeMeetingWith(row.meeting_with),
+            available_for: normalizeAvailableFor(row.available_for),
+        });
     }
-    catch {
+    catch (err) {
+        console.error("PUT /me/creator-profile failed", { userId: req.user?.id, err });
         return res.status(500).json({ error: "creator_save_failed" });
     }
 });
+// Route to get the authenticated creator's images.
 meRouter.get("/creator-images", requireAuth, requireRole(["creator"]), async (req, res) => {
     const pool = getPool();
     try {
@@ -306,10 +461,12 @@ meRouter.get("/creator-images", requireAuth, requireRole(["creator"]), async (re
         return res.status(500).json({ error: "images_load_failed" });
     }
 });
+// Zod schema for validating creator image data.
 const CreatorImageSchema = z.object({
     sequenceNumber: z.coerce.number().int().min(1).max(7),
     imageFile: z.string().min(1),
 });
+// Route to create a new image for the authenticated creator.
 meRouter.post("/creator-images", requireAuth, requireRole(["creator"]), async (req, res) => {
     const parsed = CreatorImageSchema.safeParse(req.body);
     if (!parsed.success)
@@ -333,6 +490,7 @@ meRouter.post("/creator-images", requireAuth, requireRole(["creator"]), async (r
         return res.status(500).json({ error: "image_save_failed" });
     }
 });
+// Route to update an existing image for the authenticated creator.
 meRouter.put("/creator-images/:imageId", requireAuth, requireRole(["creator"]), async (req, res) => {
     const parsed = CreatorImageSchema.safeParse(req.body);
     if (!parsed.success)
@@ -355,6 +513,7 @@ meRouter.put("/creator-images/:imageId", requireAuth, requireRole(["creator"]), 
         return res.status(500).json({ error: "image_update_failed" });
     }
 });
+// Route to delete an image for the authenticated creator.
 meRouter.delete("/creator-images/:imageId", requireAuth, requireRole(["creator"]), async (req, res) => {
     const pool = getPool();
     try {

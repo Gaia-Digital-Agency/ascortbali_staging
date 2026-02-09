@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /baligirls/admin
+Disallow: /baligirls/admin/
+Disallow: /baligirls/user/logged
+Disallow: /baligirls/user/logged/
+Disallow: /baligirls/creator/logged
+Disallow: /baligirls/creator/logged/
+Sitemap: http://34.124.244.233/baligirls/sitemap.xml
