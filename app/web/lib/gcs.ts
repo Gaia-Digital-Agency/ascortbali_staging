@@ -15,6 +15,13 @@ export function getObjectKey(filename: string) {
   return `${objectPrefix}/${filename}`.replace(/\/{2,}/g, "/");
 }
 
+const rawStaticPrefix = process.env["GCS_STATIC_PREFIX"] ?? "baligirls/static";
+const staticPrefix = rawStaticPrefix.replace(/^\/+|\/+$/g, "");
+
+export function getStaticKey(relPath: string) {
+  return `${staticPrefix}/${relPath}`.replace(/\/{2,}/g, "/");
+}
+
 export async function uploadObject(params: {
   objectKey: string;
   buffer: Buffer;
