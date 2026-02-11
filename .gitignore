@@ -1,3 +1,14 @@
+# PROJECT SPECIFIC IMAGE FOLDER
+
+# WATERMARK PROCESSING FOLDERS
+engine/watermark/clean_reject/
+engine/watermark/debug/
+engine/watermark/need_work/
+engine/watermark/watermark_images/
+
+# CLEAN IMAGES (served from GCS)
+app/Assets/Creator/clean_image/
+
 # NODE.JS / NEXT.JS
 node_modules/
 error_log
@@ -109,12 +120,6 @@ database/cPanel.txt
 scrappers/page_scrapper/page_output*.json
 scrappers/page_scrapper/image_output*.json
 scrappers/page_scrapper/page_output*.md
-
-# IMAGES (binary files in scraper/watermark dirs)
-watermark/target/
-watermark/results/
-watermark/debug/
-scrappers/**/images/
 
 # AI FOLDER & FILES
 .claude

@@ -74,6 +74,7 @@ AscortBali/
 |----------|--------|-------------|------|
 | `/health` | GET | Health check | None |
 | `/auth/login` | POST | Login (admin/user/creator portals) | None |
+| `/auth/change-password` | POST | Change password (does not overwrite temp_password) | Required |
 | `/auth/refresh` | POST | Refresh access token | None |
 | `/auth/logout` | POST | Logout (stateless) | None |
 | `/me` | GET | Current user info | Required |
@@ -126,8 +127,16 @@ AscortBali/
 - Algorithm: **EdDSA (Ed25519)**
 - Access token: 15 min TTL
 - Refresh token: 30 day TTL
-- Stored in `sessionStorage` on the client
+- Stored in `sessionStorage` with `localStorage` fallback (better persistence across reloads)
 - Protected routes use `requireAuth` + `requireRole` middleware
+
+### Password Fallback + Change Password
+- Password change endpoint: `POST /auth/change-password` (does not overwrite `providers.temp_password`)
+- Fallback passwords:
+  - Admin: `admin123`
+  - User: `user123`
+  - Creator: `creator123` (plus creator `temp_password`)
+- Full rules: `references/fallback_access.md`
 
 ---
 
@@ -230,10 +239,15 @@ pnpm dev
 |--------|----------|----------|
 | Admin | `admin` | `admin123` |
 | User | `user` | `user123` |
-| Creator | `callista` | `6282144288224` |
-| Creator | `mary` | `380669265774` |
+| Creator | `callista` | `6282144288224` (or `creator123`) |
+| Creator | `mary` | `380669265774` (or `creator123`) |
 
-Creator login: username = creator name, password = `temp_password` (digits only).
+Creator login:
+- Username = creator `name`
+- Password = `temp_password` (digits only) OR creator fallback `creator123`
+- Creators can change their password after login; `temp_password` is preserved.
+
+Password fallback rules and details: `references/fallback_access.md`.
 
 ---
 

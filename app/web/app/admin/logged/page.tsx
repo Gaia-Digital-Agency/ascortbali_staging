@@ -51,6 +51,10 @@ export default function AdminDashboard() {
   const [ads, setAds] = useState<AdSpace[]>(defaultAds);
   const [error, setError] = useState<string | null>(null);
   const [savingSlot, setSavingSlot] = useState<string | null>(null);
+  const [pwCurrent, setPwCurrent] = useState("admin123");
+  const [pwNew, setPwNew] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -118,6 +122,24 @@ export default function AdminDashboard() {
     window.location.assign(withBasePath("/"));
   };
 
+  const changePassword = async () => {
+    setPwSaving(true);
+    setPwMsg(null);
+    setError(null);
+    try {
+      await apiFetch("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+      });
+      setPwMsg("Password updated.");
+      setPwNew("");
+    } catch (err: any) {
+      setError(err.message ?? "Password change failed");
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
@@ -182,6 +204,30 @@ export default function AdminDashboard() {
             RESET
           </button>
         </div>
+      </div>
+
+      <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7 shadow-luxe">
+        <div className="text-xs tracking-[0.22em] text-brand-muted">CHANGE PASSWORD</div>
+        <div className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+          <input
+            type="password"
+            className="rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+            value={pwCurrent}
+            onChange={(e) => setPwCurrent(e.target.value)}
+            placeholder="Current password"
+          />
+          <input
+            type="password"
+            className="rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+            value={pwNew}
+            onChange={(e) => setPwNew(e.target.value)}
+            placeholder="New password"
+          />
+          <button onClick={changePassword} disabled={pwSaving || !pwNew.trim()} className="btn btn-primary py-3">
+            {pwSaving ? "SAVING..." : "UPDATE"}
+          </button>
+        </div>
+        {pwMsg ? <div className="mt-4 text-xs text-emerald-400">{pwMsg}</div> : null}
       </div>
 
       {error ? <div className="text-xs text-red-400">{error}</div> : null}

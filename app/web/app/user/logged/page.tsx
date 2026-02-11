@@ -36,6 +36,10 @@ export default function UserDashboard() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pwCurrent, setPwCurrent] = useState("user123");
+  const [pwNew, setPwNew] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
 
   // Effect hook to fetch user data and profile on component mount.
   useEffect(() => {
@@ -82,6 +86,24 @@ export default function UserDashboard() {
   const logout = () => {
     clearTokens();
     window.location.assign(withBasePath("/"));
+  };
+
+  const changePassword = async () => {
+    setPwSaving(true);
+    setPwMsg(null);
+    setError(null);
+    try {
+      await apiFetch("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+      });
+      setPwMsg("Password updated.");
+      setPwNew("");
+    } catch (err: any) {
+      setError(err.message ?? "Password change failed");
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   return (
@@ -176,6 +198,34 @@ export default function UserDashboard() {
         <div className="mt-6">
           <button onClick={save} disabled={saving} className="btn btn-primary py-3">
             {saving ? "SAVING..." : "SAVE PROFILE"}
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7">
+        <div className="text-xs tracking-luxe text-brand-muted">CHANGE PASSWORD</div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <Field label="CURRENT PASSWORD">
+            <input
+              type="password"
+              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+              value={pwCurrent}
+              onChange={(e) => setPwCurrent(e.target.value)}
+            />
+          </Field>
+          <Field label="NEW PASSWORD">
+            <input
+              type="password"
+              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+              value={pwNew}
+              onChange={(e) => setPwNew(e.target.value)}
+            />
+          </Field>
+        </div>
+        {pwMsg ? <div className="mt-4 text-xs text-emerald-400">{pwMsg}</div> : null}
+        <div className="mt-6">
+          <button onClick={changePassword} disabled={pwSaving || !pwNew.trim()} className="btn btn-primary py-3">
+            {pwSaving ? "SAVING..." : "UPDATE PASSWORD"}
           </button>
         </div>
       </section>

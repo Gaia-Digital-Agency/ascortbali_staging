@@ -9,6 +9,21 @@ import { createRouter } from "./router.js";
 
 // Initialize the Express application and apply middleware.
 const app = express();
+
+// Ensure req.ip reflects the real client IP when behind NGINX (via X-Forwarded-For).
+// Default: trust the first proxy hop.
+const trustProxyEnv = process.env.TRUST_PROXY;
+if (trustProxyEnv === undefined) {
+  app.set("trust proxy", 1);
+} else if (trustProxyEnv === "true") {
+  app.set("trust proxy", true);
+} else if (trustProxyEnv === "false") {
+  app.set("trust proxy", false);
+} else {
+  const n = Number(trustProxyEnv);
+  app.set("trust proxy", Number.isFinite(n) ? n : 1);
+}
+
 app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));

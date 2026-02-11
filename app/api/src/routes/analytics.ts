@@ -10,6 +10,107 @@ export const analyticsRouter = Router();
 // Flag to track if the analytics table has been created.
 let analyticsTableReady = false;
 
+const VISITOR_COUNT_OFFSET = Number(process.env.VISITOR_COUNT_OFFSET ?? 12876);
+const GEO_LOOKUP_PROVIDER = (process.env.ANALYTICS_GEO_LOOKUP ?? "ipwhois").toLowerCase();
+
+type Geo = { city: string | null; country: string | null };
+
+const geoCache = new Map<string, { expiresAt: number; geo: Geo }>();
+
+function isProbablyPublicIp(ip: string): boolean {
+  const s = ip.trim().toLowerCase();
+  if (!s) return false;
+  if (s === "127.0.0.1" || s === "::1") return false;
+  if (s.startsWith("10.")) return false;
+  if (s.startsWith("192.168.")) return false;
+  if (s.startsWith("172.")) {
+    const part = Number(s.split(".")[1]);
+    if (Number.isFinite(part) && part >= 16 && part <= 31) return false;
+  }
+  if (s.startsWith("169.254.")) return false;
+  if (s.startsWith("fe80:") || s.startsWith("fc") || s.startsWith("fd")) return false; // link-local + unique-local v6
+  return true;
+}
+
+function pickFirstHeaderIp(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const first = v.split(",")[0]?.trim();
+  return first || null;
+}
+
+function getClientIp(req: { ip?: string; headers?: Record<string, unknown> }): string {
+  const headers = (req.headers ?? {}) as Record<string, unknown>;
+
+  // Common proxy/CDN headers (prefer explicit client IP if present).
+  const cf = typeof headers["cf-connecting-ip"] === "string" ? headers["cf-connecting-ip"] : null;
+  if (cf) return cf.trim();
+
+  const xff = pickFirstHeaderIp(headers["x-forwarded-for"]);
+  if (xff) return xff;
+
+  const xri = typeof headers["x-real-ip"] === "string" ? headers["x-real-ip"] : null;
+  if (xri) return xri.trim();
+
+  return (req.ip || "0.0.0.0").trim();
+}
+
+function geoFromHeaders(req: { headers?: Record<string, unknown> }): Geo {
+  const headers = (req.headers ?? {}) as Record<string, unknown>;
+  const city = typeof headers["x-geo-city"] === "string" ? headers["x-geo-city"].trim() : null;
+  const country =
+    (typeof headers["x-geo-country"] === "string" ? headers["x-geo-country"].trim() : null) ||
+    (typeof headers["cf-ipcountry"] === "string" ? headers["cf-ipcountry"].trim() : null);
+  return { city: city || null, country: country || null };
+}
+
+async function lookupGeo(ip: string): Promise<Geo> {
+  if (GEO_LOOKUP_PROVIDER === "off" || GEO_LOOKUP_PROVIDER === "false" || GEO_LOOKUP_PROVIDER === "0") {
+    return { city: null, country: null };
+  }
+  if (!isProbablyPublicIp(ip)) return { city: null, country: null };
+
+  const now = Date.now();
+  const cached = geoCache.get(ip);
+  if (cached && cached.expiresAt > now) return cached.geo;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 900);
+  try {
+    let geo: Geo = { city: null, country: null };
+
+    if (GEO_LOOKUP_PROVIDER === "ipapi") {
+      const res = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { signal: controller.signal });
+      if (res.ok) {
+        const j: any = await res.json();
+        geo = {
+          city: typeof j?.city === "string" ? j.city : null,
+          country: typeof j?.country_name === "string" ? j.country_name : typeof j?.country === "string" ? j.country : null,
+        };
+      }
+    } else {
+      // Default: ipwho.is
+      const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, { signal: controller.signal });
+      if (res.ok) {
+        const j: any = await res.json();
+        if (j?.success !== false) {
+          geo = {
+            city: typeof j?.city === "string" ? j.city : null,
+            country: typeof j?.country === "string" ? j.country : null,
+          };
+        }
+      }
+    }
+
+    // Cache even nulls to avoid hammering geo service.
+    geoCache.set(ip, { expiresAt: now + 12 * 60 * 60 * 1000, geo });
+    return geo;
+  } catch {
+    return { city: null, country: null };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // Ensures the visitor_analytics table exists before processing requests.
 async function ensureAnalyticsTable() {
   if (analyticsTableReady) return;
@@ -44,11 +145,23 @@ analyticsRouter.post("/visit", async (req, res) => {
   try {
     await ensureAnalyticsTable();
     const pool = getPool();
-    const ip = req.ip || "0.0.0.0";
+    const ip = getClientIp(req);
     const ipHash = hmacIp(ip);
-    const country = parsed.data.country ?? null;
-    const city = parsed.data.city ?? null;
+    let country = parsed.data.country ?? null;
+    let city = parsed.data.city ?? null;
     const userAgent = parsed.data.userAgent ?? null;
+
+    // Best-effort: pick up geo from proxy headers or resolve via IP lookup.
+    if (!city || !country) {
+      const fromHeaders = geoFromHeaders(req);
+      city = city ?? fromHeaders.city;
+      country = country ?? fromHeaders.country;
+    }
+    if (!city || !country) {
+      const fromIp = await lookupGeo(ip);
+      city = city ?? fromIp.city;
+      country = country ?? fromIp.country;
+    }
 
     // Insert or update visitor data in the database.
     const result = await pool.query(
@@ -66,7 +179,13 @@ analyticsRouter.post("/visit", async (req, res) => {
       [ipHash, country, city, userAgent]
     );
 
-    return res.json({ visitorId: result.rows[0]?.id ?? null });
+    let visitorId: string | null = result.rows[0]?.id ?? null;
+    if (!visitorId) {
+      const sel = await pool.query("SELECT id::text AS id FROM visitor_analytics WHERE ip_hash = $1 LIMIT 1", [ipHash]);
+      visitorId = sel.rows[0]?.id ?? null;
+    }
+
+    return res.json({ visitorId });
   } catch {
     // Never crash API because analytics is non-critical
     return res.json({ visitorId: null });
@@ -78,22 +197,47 @@ analyticsRouter.get("/status", async (req, res) => {
   try {
     await ensureAnalyticsTable();
     const pool = getPool();
-    const ip = req.ip || "0.0.0.0";
+    const ip = getClientIp(req);
     const ipHash = hmacIp(ip);
 
     // Get total visitor count and the current visitor's location.
     const [countRes, visitorRes] = await Promise.all([
-      pool.query("SELECT COUNT(*)::int AS count FROM visitor_analytics"),
+      // COUNT(*) only changes when a new unique ip_hash appears. We want a
+      // consistently increasing counter, so sum the total_visits.
+      pool.query("SELECT COALESCE(SUM(total_visits), 0)::bigint AS count FROM visitor_analytics"),
       pool.query("SELECT city, country FROM visitor_analytics WHERE ip_hash = $1 LIMIT 1", [ipHash]),
     ]);
 
-    const visitorCount = countRes.rows[0]?.count ?? 0;
+    const visitorCount = Number(countRes.rows[0]?.count ?? 0) + (Number.isFinite(VISITOR_COUNT_OFFSET) ? VISITOR_COUNT_OFFSET : 0);
     const visitor = visitorRes.rows[0];
-    const location = [visitor?.city, visitor?.country].filter(Boolean).join(", ") || "Unknown";
+    let city = (visitor?.city as string | null | undefined) ?? null;
+    let country = (visitor?.country as string | null | undefined) ?? null;
+
+    if (!city || !country) {
+      const fromHeaders = geoFromHeaders(req);
+      city = city ?? fromHeaders.city;
+      country = country ?? fromHeaders.country;
+    }
+
+    if ((!city || !country) && visitor) {
+      const fromIp = await lookupGeo(ip);
+      const nextCity = city ?? fromIp.city;
+      const nextCountry = country ?? fromIp.country;
+      if (nextCity || nextCountry) {
+        city = nextCity;
+        country = nextCountry;
+        await pool.query(
+          "UPDATE visitor_analytics SET city = COALESCE($1, city), country = COALESCE($2, country) WHERE ip_hash = $3",
+          [city, country, ipHash]
+        );
+      }
+    }
+
+    const location = [city, country].filter(Boolean).join(", ") || "Unknown";
 
     return res.json({ visitorCount, ip, location });
   } catch {
-    return res.json({ visitorCount: 0, ip: req.ip || "0.0.0.0", location: "Unknown" });
+    return res.json({ visitorCount: Number.isFinite(VISITOR_COUNT_OFFSET) ? VISITOR_COUNT_OFFSET : 0, ip: req.ip || "0.0.0.0", location: "Unknown" });
   }
 });
 

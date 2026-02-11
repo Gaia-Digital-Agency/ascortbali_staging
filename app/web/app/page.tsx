@@ -181,9 +181,6 @@ export default async function Page({
     <div className="space-y-14">
       {/* Main advertising section */}
       <section className="space-y-6">
-        <div>
-          <div className="text-xs tracking-luxe text-brand-muted">HOMEPAGE ADS</div>
-        </div>
         <MainAdSpaces />
       </section>
 
@@ -245,11 +242,10 @@ export default async function Page({
         {/* Creator listing header and pagination */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="text-xs tracking-luxe text-brand-muted">GIRLS</div>
             <h2 className="mt-3 font-display text-3xl md:text-4xl">BALI GIRLS</h2>
-            <p className="mt-3 text-sm text-brand-muted">
-              Page {safePage}: {pageSlots.length} slots. {hasActiveFilters ? `Matched creators: ${activeCreators.length}.` : "Baseline capacity is 135 slots (50 / 50 / 35)."}
-            </p>
+            {hasActiveFilters ? (
+              <p className="mt-3 text-sm text-brand-muted">Matched creators: {activeCreators.length}.</p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -315,7 +311,6 @@ export default async function Page({
 
       {/* Bottom advertising section */}
       <section className="space-y-4">
-        <div className="text-xs tracking-luxe text-brand-muted">BOTTOM AD</div>
         <BottomAdCard />
       </section>
     </div>

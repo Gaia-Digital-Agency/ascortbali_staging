@@ -40,13 +40,12 @@ export function FooterStatus() {
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-xs tracking-[0.18em] text-brand-muted md:flex-row md:items-start md:justify-between">
       {/* Copyright and developer information. */}
       <div className="space-y-2 text-center md:text-left">
-        <div>DEVELOPED BY GAIADA</div>
-        <div>DATA PRIVACY SECURES</div>
-        <div>COPYRIGHT (R) 2026</div>
+        <div>DATA PRIVACY SECURED</div>
+        <div>NUMBER OF VISITORS: {status?.visitorCount ?? 12876}</div>
+        <div>COPYRIGHT (C) 2026</div>
       </div>
       {/* Dynamic status information like visitor count, date, location, and IP. */}
       <div className="space-y-2 text-center md:text-right">
-        <div>NUMBER OF VISITORS: {status?.visitorCount ?? "—"}</div>
         <div>CURRENT DATE: {currentDate || "—"}</div>
         <div>CURRENT LOCATION: {status?.location ?? "—"}</div>
         <div>CURRENT IP: {status?.ip ?? "—"}</div>
