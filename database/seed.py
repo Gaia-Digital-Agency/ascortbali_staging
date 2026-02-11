@@ -225,12 +225,27 @@ def main() -> int:
                 # Upsert images
                 for img in images:
                     image_id = str(img.get("id") or "").strip()
+                    provider_uuid = img.get("page_uuid")
+                    if not image_id or not provider_uuid:
+                        continue
+
                     match = re.search(r"(\d+)$", image_id)
                     sequence_number = int(match.group(1)) if match else None
                     if not sequence_number:
                         continue
                     if sequence_number > 7:
                         continue
+
+                    # Keep (provider_uuid, sequence_number) unique by removing stale row first.
+                    cur.execute(
+                        """
+                        DELETE FROM provider_images
+                         WHERE provider_uuid = %s
+                           AND sequence_number = %s
+                           AND image_id <> %s
+                        """,
+                        (provider_uuid, sequence_number, image_id),
+                    )
 
                     cur.execute(
                         """
@@ -244,7 +259,7 @@ def main() -> int:
                         """,
                         (
                             image_id,
-                            img.get("page_uuid"),
+                            provider_uuid,
                             img.get("profile_id"),
                             img.get("file"),
                             sequence_number,
