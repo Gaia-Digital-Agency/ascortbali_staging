@@ -11,13 +11,24 @@ type AdSpace = {
   slot: "home-1" | "home-2" | "home-3" | "bottom";
   image: string | null;
   text: string | null;
+  link_url: string | null;
 };
 
 const defaultAds: AdSpace[] = [
-  { slot: "home-1", image: withBasePath("/api/admin-asset/unique.png"), text: null },
-  { slot: "home-2", image: withBasePath("/api/admin-asset/humapedia.png"), text: null },
-  { slot: "home-3", image: null, text: null },
-  { slot: "bottom", image: null, text: "Your Ads Here" },
+  {
+    slot: "home-1",
+    image: withBasePath("/api/admin-asset/unique.png"),
+    text: null,
+    link_url: "https://lightcyan-horse-210187.hostingersite.com/",
+  },
+  {
+    slot: "home-2",
+    image: withBasePath("/api/admin-asset/humapedia.png"),
+    text: null,
+    link_url: "https://www.humanspedia.com/",
+  },
+  { slot: "home-3", image: null, text: null, link_url: "https://www.baligirls.com/" },
+  { slot: "bottom", image: null, text: "Your Ads Here", link_url: null },
 ];
 const APP_BASE_PATH = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/+$/g, "");
 
@@ -91,6 +102,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           image: slot === "bottom" ? null : toStoredImage(ad.image),
           text: slot === "bottom" ? ad.text : null,
+          link_url: slot === "bottom" ? null : (ad.link_url?.trim() || null),
         }),
       });
     } catch (err: any) {
@@ -108,7 +120,7 @@ export default function AdminDashboard() {
       if (slot === "bottom") {
         updateAd("bottom", { text: "Your Ads Here" });
       } else {
-        updateAd(slot, { image: null });
+        updateAd(slot, { image: null, link_url: null });
       }
     } catch (err: any) {
       setError(err.message ?? "Failed to clear ad slot.");
@@ -179,8 +191,10 @@ export default function AdminDashboard() {
                 key={slot}
                 slot={slot}
                 image={ad?.image ?? null}
+                linkUrl={ad?.link_url ?? null}
                 busy={savingSlot === slot}
                 onChange={(image) => updateAd(slot, { image })}
+                onChangeLinkUrl={(link_url) => updateAd(slot, { link_url })}
                 onSave={() => saveSlot(slot)}
                 onClear={() => clearSlot(slot)}
               />
@@ -239,14 +253,18 @@ function ImageAdEditor({
   slot,
   image,
   busy,
+  linkUrl,
   onChange,
+  onChangeLinkUrl,
   onSave,
   onClear,
 }: {
   slot: "home-1" | "home-2" | "home-3";
   image: string | null;
   busy: boolean;
+  linkUrl: string | null;
   onChange: (value: string) => void;
+  onChangeLinkUrl: (value: string) => void;
   onSave: () => void;
   onClear: () => void;
 }) {
@@ -278,6 +296,12 @@ function ImageAdEditor({
         value={image ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Image URL or /uploads path"
+      />
+      <input
+        className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-2 text-xs outline-none focus:border-brand-gold/60"
+        value={linkUrl ?? ""}
+        onChange={(e) => onChangeLinkUrl(e.target.value)}
+        placeholder="Click URL (https://...)"
       />
       <div className="flex gap-2">
         <button onClick={onSave} disabled={busy} className="btn btn-primary px-3 py-2 text-xs">

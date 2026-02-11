@@ -44,26 +44,7 @@ const toImageUrl = (file?: string | null) => {
   return withBasePath(`/api/clean-image/${encodeURIComponent(filename)}`);
 };
 
-// Helper functions for pagination logic.
-const getPageSize = (page: number) => {
-  if (page === 1 || page === 2) return 50;
-  if (page === 3) return 35;
-  return 50;
-};
-
-const getPageStart = (page: number) => {
-  if (page <= 1) return 0;
-  if (page === 2) return 50;
-  if (page === 3) return 100;
-  return 135 + (page - 4) * 50;
-};
-
-const getTotalPages = (totalSlots: number) => {
-  if (totalSlots <= 50) return 1;
-  if (totalSlots <= 100) return 2;
-  if (totalSlots <= 135) return 3;
-  return 3 + Math.ceil((totalSlots - 135) / 50);
-};
+const PAGE_SIZE = 50;
 
 // Loads creator data from local JSON files as a fallback.
 const loadLocalCreators = async (): Promise<Creator[]> => {
@@ -156,13 +137,12 @@ export default async function Page({
   const activeCreators = hasActiveFilters ? filteredCreators : creators;
 
   // Calculate pagination details based on filtered creators.
-  const baselineSlots = 135;
+  const baselineSlots = 108;
   const totalSlots = hasActiveFilters ? activeCreators.length : Math.max(baselineSlots, activeCreators.length);
-  const totalPages = getTotalPages(totalSlots);
+  const totalPages = Math.max(1, Math.ceil(totalSlots / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pageSize = getPageSize(safePage);
-  const pageStart = getPageStart(safePage);
-  const pageEnd = Math.min(pageStart + pageSize, totalSlots);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, totalSlots);
   const pageSlots = Array.from({ length: Math.max(pageEnd - pageStart, 0) }, (_, idx) => pageStart + idx);
 
   // Function to create pagination hrefs with current filters.

@@ -10,10 +10,11 @@ type AdSpace = {
   slot: "home-1" | "home-2" | "home-3" | "bottom";
   image: string | null;
   text: string | null;
+  link_url: string | null;
 };
 
-// Hardcoded links for advertising slots.
-const adLinkBySlot: Record<string, string> = {
+// Default links in case DB has no URL yet.
+const fallbackLinkBySlot: Record<string, string> = {
   "home-1": "https://lightcyan-horse-210187.hostingersite.com/",
   "home-2": "https://www.humanspedia.com/",
   "home-3": "https://www.baligirls.com/",
@@ -21,10 +22,20 @@ const adLinkBySlot: Record<string, string> = {
 
 // Fallback advertising data to be used if API call fails or is empty.
 const fallbackAds: AdSpace[] = [
-  { slot: "home-1", image: withBasePath("/api/admin-asset/unique.png"), text: null },
-  { slot: "home-2", image: withBasePath("/api/admin-asset/humapedia.png"), text: null },
-  { slot: "home-3", image: null, text: null },
-  { slot: "bottom", image: null, text: "Your Ads Here" },
+  {
+    slot: "home-1",
+    image: withBasePath("/api/admin-asset/unique.png"),
+    text: null,
+    link_url: fallbackLinkBySlot["home-1"],
+  },
+  {
+    slot: "home-2",
+    image: withBasePath("/api/admin-asset/humapedia.png"),
+    text: null,
+    link_url: fallbackLinkBySlot["home-2"],
+  },
+  { slot: "home-3", image: null, text: null, link_url: fallbackLinkBySlot["home-3"] },
+  { slot: "bottom", image: null, text: "Your Ads Here", link_url: null },
 ];
 
 // Normalizes an ad image URL to include the base path if necessary.
@@ -39,7 +50,7 @@ function normalizeAdImage(image: string | null) {
 
 // Normalizes an entire advertising space object.
 function normalizeAdSpace(ad: AdSpace): AdSpace {
-  return { ...ad, image: normalizeAdImage(ad.image) };
+  return { ...ad, image: normalizeAdImage(ad.image), link_url: ad.link_url?.trim() || null };
 }
 
 // Custom hook to fetch and manage advertising spaces.
@@ -82,7 +93,7 @@ export function MainAdSpaces() {
       {homeAds.map((ad) => (
         <a
           key={ad.slot}
-          href={adLinkBySlot[ad.slot] ?? "#"}
+          href={ad.link_url ?? fallbackLinkBySlot[ad.slot] ?? "#"}
           target="_blank"
           rel="noreferrer noopener"
           className="aspect-[9/16] overflow-hidden rounded-3xl border border-brand-line bg-brand-surface/50 shadow-luxe"

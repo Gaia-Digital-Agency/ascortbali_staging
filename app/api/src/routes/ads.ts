@@ -10,7 +10,7 @@ adsRouter.get("/", async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `
-      SELECT slot, image, text
+      SELECT slot, image, text, link_url
         FROM advertising_spaces
        WHERE slot IN ('home-1', 'home-2', 'home-3', 'bottom')
        ORDER BY CASE slot
