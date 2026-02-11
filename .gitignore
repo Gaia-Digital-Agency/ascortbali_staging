@@ -7,7 +7,7 @@ engine/watermark/need_work/
 engine/watermark/watermark_images/
 
 # CLEAN IMAGES (served from GCS)
-app/Assets/Creator/clean_image/
+# app/Assets/Creator/clean_image/
 
 # NODE.JS / NEXT.JS
 node_modules/
