@@ -45,7 +45,19 @@ a {
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-xs font-semibold tracking-[0.22em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-xs font-semibold tracking-[0.22em] transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn:hover {
+    @apply -translate-y-0.5 shadow-luxe;
+  }
+
+  .btn:active {
+    @apply translate-y-0 shadow-none;
+  }
+
+  .btn:focus-visible {
+    @apply outline-none ring-2 ring-brand-gold/70 ring-offset-2 ring-offset-brand-bg;
   }
 
   .btn-primary {

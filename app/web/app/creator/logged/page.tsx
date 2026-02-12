@@ -57,6 +57,7 @@ const toImageUrl = (file?: string | null) => {
 
 const defaultSlots = Array.from({ length: 7 }, (_, i) => i + 1);
 const APP_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const CREATOR_NAME_REGEX = /^[A-Za-z0-9]{1,50}$/;
 
 export default function CreatorPanel() {
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
@@ -100,6 +101,13 @@ export default function CreatorPanel() {
 
   const saveProfile = async () => {
     if (!profile) return;
+    const creatorName = (profile.model_name ?? "").trim();
+    if (!CREATOR_NAME_REGEX.test(creatorName)) {
+      setError("Creator name must be one word (letters/numbers only), max 50 characters.");
+      setMessage(null);
+      return;
+    }
+
     setSavingProfile(true);
     setError(null);
     setMessage(null);
@@ -110,7 +118,7 @@ export default function CreatorPanel() {
         tempPassword: profile.temp_password ?? "",
         lastSeen: profile.last_seen ?? "",
         notes: profile.notes ?? "",
-        modelName: profile.model_name,
+        modelName: creatorName,
         gender: profile.gender,
         age: Number(profile.age),
         location: profile.location ?? "",
@@ -141,7 +149,13 @@ export default function CreatorPanel() {
       await apiFetch("/me/creator-profile", { method: "PUT", body: JSON.stringify(payload) });
       setMessage("Creator profile updated.");
     } catch (err: any) {
-      setError(err.message ?? "Profile save failed");
+      if (err?.message === "creator_name_taken") {
+        setError("Creator name is already in use. Please choose another one.");
+      } else if (err?.message === "invalid_creator_name") {
+        setError("Creator name must be one word (letters/numbers only), max 50 characters.");
+      } else {
+        setError(err.message ?? "Profile save failed");
+      }
     } finally {
       setSavingProfile(false);
     }
@@ -265,7 +279,17 @@ export default function CreatorPanel() {
         <div className="text-xs tracking-luxe text-brand-muted">PROFILE (ALIGNED TO page_data.json)</div>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           <Field label="NAME">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.model_name ?? ""} onChange={(e) => updateProfile("model_name", e.target.value)} />
+            <input
+              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+              value={profile.model_name ?? ""}
+              onChange={(e) => updateProfile("model_name", e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 50))}
+              maxLength={50}
+              inputMode="text"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="One word, letters/numbers only"
+            />
           </Field>
           <Field label="TITLE">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.title ?? ""} onChange={(e) => updateProfile("title", e.target.value)} />
