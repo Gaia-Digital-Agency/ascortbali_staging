@@ -1,8 +1,9 @@
+// This script seeds the database with initial data.
 import bcrypt from "bcryptjs";
 import { PrismaClient, Role } from "@prisma/client";
 const prisma = new PrismaClient();
 async function main() {
-    // Seed languages
+    // Seed languages.
     const languages = ["English", "Indonesian", "Japanese", "Chinese"];
     for (const name of languages) {
         await prisma.language.upsert({
@@ -11,7 +12,7 @@ async function main() {
             create: { name },
         });
     }
-    // Seed categories
+    // Seed categories.
     const categories = ["Wellness", "Photography", "Guided Tours", "Coaching"];
     for (const name of categories) {
         await prisma.category.upsert({
@@ -20,7 +21,7 @@ async function main() {
             create: { name },
         });
     }
-    // Create demo provider and customer
+    // Create demo provider, customer, and admin users.
     // NOTE: Passwords are "password123" for local demo. Change in real.
     const hash = await bcrypt.hash("password123", 10);
     const provider = await prisma.user.upsert({
@@ -48,6 +49,7 @@ async function main() {
         update: {},
         create: { userId: customer.id, fullName: "Demo Customer" },
     });
+    // Create a demo service.
     const cat = await prisma.category.findFirst({ where: { name: "Wellness" } });
     if (cat) {
         await prisma.service.upsert({
@@ -66,6 +68,7 @@ async function main() {
             },
         });
     }
+    // Seed advertising spaces.
     const ads = [
         {
             slot: "hero-1",
@@ -107,6 +110,7 @@ async function main() {
     }
     console.log("Seed complete.");
 }
+// Run the seed script and exit.
 main()
     .catch((e) => {
     console.error(e);

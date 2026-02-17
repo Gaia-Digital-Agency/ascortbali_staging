@@ -63,6 +63,7 @@ const normalizeAvailableFor = (value) => {
         return "outcall";
     return v;
 };
+const CREATOR_NAME_REGEX = /^[A-Za-z0-9]{1,50}$/;
 // Route to get the currently authenticated user's basic information.
 meRouter.get("/", requireAuth, async (req, res) => {
     res.json({
@@ -178,7 +179,7 @@ const CreatorProfileSchema = z.object({
     tempPassword: z.string().max(100),
     lastSeen: z.string().max(40),
     notes: z.string().max(4000),
-    modelName: z.string().min(2).max(100),
+    modelName: z.string().trim().regex(CREATOR_NAME_REGEX),
     gender: z.preprocess(normalizeGender, z.enum(["female", "male", "transgender"])),
     age: z.coerce.number().int().min(18).max(70),
     location: z.string().max(100),
@@ -276,8 +277,23 @@ meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (r
     if (!parsed.success)
         return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
     const p = parsed.data;
+    if (!CREATOR_NAME_REGEX.test(p.modelName)) {
+        return res
+            .status(400)
+            .json({ error: "invalid_creator_name", message: "Creator name must be one word, alphanumeric only, max 50 characters." });
+    }
     const pool = getPool();
     try {
+        const duplicateNameRes = await pool.query(`
+      SELECT 1
+        FROM providers
+       WHERE LOWER(model_name) = LOWER($1)
+         AND uuid <> $2::uuid
+       LIMIT 1
+      `, [p.modelName, req.user.id]);
+        if (duplicateNameRes.rows[0]) {
+            return res.status(409).json({ error: "creator_name_taken", message: "Creator name is already in use." });
+        }
         const updateRes = await pool.query(`
       UPDATE providers
          SET title = $2,
@@ -441,6 +457,9 @@ meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (r
         });
     }
     catch (err) {
+        if (err?.code === "23505") {
+            return res.status(409).json({ error: "creator_name_taken", message: "Creator name is already in use." });
+        }
         console.error("PUT /me/creator-profile failed", { userId: req.user?.id, err });
         return res.status(500).json({ error: "creator_save_failed" });
     }

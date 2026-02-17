@@ -1,4 +1,5 @@
 import { verifyJwt } from "../lib/jwt.js";
+// Middleware to require a valid JWT for a route.
 export async function requireAuth(req, res, next) {
     const header = req.header("authorization");
     const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
@@ -13,6 +14,7 @@ export async function requireAuth(req, res, next) {
         return res.status(401).json({ error: "invalid_token" });
     }
 }
+// Middleware factory to require a specific role for a route.
 export function requireRole(roles) {
     return (req, res, next) => {
         if (!req.user)
