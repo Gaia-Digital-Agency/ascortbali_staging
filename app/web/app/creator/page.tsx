@@ -21,10 +21,15 @@ export default function CreatorLoginPage() {
   const [recoverOldPassword, setRecoverOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [recoverMessage, setRecoverMessage] = useState<string | null>(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [policyConfirmed, setPolicyConfirmed] = useState(false);
+  const [termsConfirmed, setTermsConfirmed] = useState(false);
+  const [privacyConfirmed, setPrivacyConfirmed] = useState(false);
+  const [noNudeConfirmed, setNoNudeConfirmed] = useState(false);
 
-  // Handles the form submission for creator login.
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const hasAllConfirmations = policyConfirmed && termsConfirmed && privacyConfirmed && noNudeConfirmed;
+
+  const loginCreator = async () => {
     setLoading(true);
     setError(null);
     try {
@@ -50,6 +55,16 @@ export default function CreatorLoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handles the form submission for creator login.
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hasAllConfirmations) {
+      setShowConfirmPopup(true);
+      return;
+    }
+    await loginCreator();
   };
 
   const verifyRecovery = async () => {
@@ -244,6 +259,83 @@ export default function CreatorLoginPage() {
 
         {recoverMessage ? <div className="mt-3 text-xs text-emerald-400">{recoverMessage}</div> : null}
       </div>
+
+      {showConfirmPopup ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-brand-line bg-brand-surface p-6 shadow-luxe">
+            <div className="text-xs tracking-[0.22em] text-brand-muted">REGISTRATION CONFIRMATION</div>
+            <h2 className="mt-2 font-display text-2xl">Please Confirm Before Sign In</h2>
+            <p className="mt-2 text-sm text-brand-muted">
+              To continue, confirm platform policy and agreements for Terms of Use, Privacy Statement, and no nude
+              photograph uploads.
+            </p>
+
+            <div className="mt-5 space-y-3 text-sm">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={policyConfirmed}
+                  onChange={(e) => setPolicyConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-brand-line"
+                />
+                <span>I confirm my registration/profile details follow platform policy.</span>
+              </label>
+
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={termsConfirmed}
+                  onChange={(e) => setTermsConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-brand-line"
+                />
+                <span>I agree to the Terms of Use.</span>
+              </label>
+
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={privacyConfirmed}
+                  onChange={(e) => setPrivacyConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-brand-line"
+                />
+                <span>I agree to the Privacy Statement.</span>
+              </label>
+
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={noNudeConfirmed}
+                  onChange={(e) => setNoNudeConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-brand-line"
+                />
+                <span>I confirm I will not upload nude photographs.</span>
+              </label>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setShowConfirmPopup(false)}
+                disabled={loading}
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!hasAllConfirmations || loading}
+                onClick={async () => {
+                  setShowConfirmPopup(false);
+                  await loginCreator();
+                }}
+              >
+                {loading ? "SIGNING IN..." : "AGREE & CONTINUE"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
