@@ -1,11 +1,14 @@
+// This module defines routes for managing user orders and payments.
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 export const ordersRouter = Router();
+// Zod schema for validating order creation requests.
 const CreateOrderSchema = z.object({
     serviceId: z.string().uuid(),
 });
+// POST route for creating a new order.
 ordersRouter.post("/", requireAuth, async (req, res) => {
     const parsed = CreateOrderSchema.safeParse(req.body);
     if (!parsed.success)
@@ -27,6 +30,7 @@ ordersRouter.post("/", requireAuth, async (req, res) => {
     });
     res.status(201).json(order);
 });
+// Zod schema for validating payment requests.
 const PaymentSchema = z.object({
     orderId: z.string().uuid(),
     provider: z.string().min(2).max(50).default("manual"),
@@ -34,6 +38,7 @@ const PaymentSchema = z.object({
     transactionRef: z.string().max(120).optional().nullable(),
     status: z.enum(["pending", "succeeded", "failed", "refunded"]).default("succeeded"),
 });
+// POST route for processing payments for an order.
 ordersRouter.post("/payment", requireAuth, async (req, res) => {
     const parsed = PaymentSchema.safeParse(req.body);
     if (!parsed.success)
@@ -53,6 +58,7 @@ ordersRouter.post("/payment", requireAuth, async (req, res) => {
             paidAt: parsed.data.status === "succeeded" ? new Date() : null,
         },
     });
+    // Update order status if payment is successful.
     if (parsed.data.status === "succeeded") {
         await prisma.order.update({ where: { id: order.id }, data: { status: "paid" } });
     }

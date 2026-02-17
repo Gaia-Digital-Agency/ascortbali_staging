@@ -1,9 +1,11 @@
+// This module defines routes for managing services offered by creators.
 import { Router } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 export const servicesRouter = Router();
+// Zod schema for validating service listing query parameters.
 const ListQuery = z.object({
     q: z.string().optional(),
     category: z.string().uuid().optional(),
@@ -11,11 +13,13 @@ const ListQuery = z.object({
     pageSize: z.coerce.number().int().min(1).max(100).default(50),
     sort: z.enum(["newest", "updated", "price_asc", "price_desc", "featured"]).default("featured"),
 });
+// GET route for listing services with filtering, pagination, and sorting.
 servicesRouter.get("/", async (req, res) => {
     const parsed = ListQuery.safeParse(req.query);
     if (!parsed.success)
         return res.status(400).json({ error: "invalid_query", details: parsed.error.flatten() });
     const { q, category, page, pageSize, sort } = parsed.data;
+    // Construct Prisma WHERE clause for filtering.
     const where = { active: true };
     if (category)
         where.categoryId = category;
@@ -25,6 +29,7 @@ servicesRouter.get("/", async (req, res) => {
             { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
         ];
     }
+    // Determine Prisma ORDER BY clause based on sort parameter.
     const orderBy = sort === "newest"
         ? { createdAt: "desc" }
         : sort === "updated"
@@ -34,6 +39,7 @@ servicesRouter.get("/", async (req, res) => {
                 : sort === "price_desc"
                     ? { basePrice: "desc" }
                     : { featuredRank: "asc" };
+    // Fetch total count and paginated services.
     const total = await prisma.service.count({ where });
     const items = await prisma.service.findMany({
         where,
@@ -44,6 +50,7 @@ servicesRouter.get("/", async (req, res) => {
     });
     res.json({ items, page, pageSize, total });
 });
+// GET route for fetching a single service by ID.
 servicesRouter.get("/:id", async (req, res) => {
     const id = req.params.id;
     const service = await prisma.service.findUnique({
@@ -56,6 +63,7 @@ servicesRouter.get("/:id", async (req, res) => {
         return res.status(404).json({ error: "not_found" });
     res.json(service);
 });
+// Zod schema for validating service upsert (create/update) data.
 const UpsertSchema = z.object({
     title: z.string().min(3).max(120),
     description: z.string().min(10).max(4000),
@@ -66,6 +74,7 @@ const UpsertSchema = z.object({
     durationMinutes: z.coerce.number().int().min(5).max(24 * 60),
     active: z.boolean().default(true),
 });
+// POST route for creating a new service.
 servicesRouter.post("/", requireAuth, requireRole(["provider", "creator", "admin"]), async (req, res) => {
     const parsed = UpsertSchema.safeParse(req.body);
     if (!parsed.success)
@@ -85,6 +94,7 @@ servicesRouter.post("/", requireAuth, requireRole(["provider", "creator", "admin
     });
     res.status(201).json(svc);
 });
+// PUT route for updating an existing service.
 servicesRouter.put("/:id", requireAuth, requireRole(["provider", "creator", "admin"]), async (req, res) => {
     const id = req.params.id;
     const parsed = UpsertSchema.safeParse(req.body);
@@ -93,6 +103,7 @@ servicesRouter.put("/:id", requireAuth, requireRole(["provider", "creator", "adm
     const existing = await prisma.service.findUnique({ where: { id } });
     if (!existing)
         return res.status(404).json({ error: "not_found" });
+    // Ensure only the creator or an admin can update the service.
     if (req.user.role !== "admin" && existing.creatorId !== req.user.id)
         return res.status(403).json({ error: "forbidden" });
     const svc = await prisma.service.update({

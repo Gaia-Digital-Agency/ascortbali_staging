@@ -1,11 +1,13 @@
+// This module defines routes for fetching advertising space data.
 import { Router } from "express";
 import { getPool } from "../lib/pg.js";
 export const adsRouter = Router();
+// Route to fetch all active advertising spaces.
 adsRouter.get("/", async (_req, res) => {
     const pool = getPool();
     try {
         const { rows } = await pool.query(`
-      SELECT slot, image, text
+      SELECT slot, image, text, link_url
         FROM advertising_spaces
        WHERE slot IN ('home-1', 'home-2', 'home-3', 'bottom')
        ORDER BY CASE slot
