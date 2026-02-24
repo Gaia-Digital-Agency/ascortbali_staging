@@ -21,6 +21,9 @@ export default function UserLoginPage() {
   const [recoverOldPassword, setRecoverOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [recoverMessage, setRecoverMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRecoverOldPassword, setShowRecoverOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Handles the form submission for user login.
   const onSubmit = async (e: React.FormEvent) => {
@@ -154,11 +157,12 @@ export default function UserLoginPage() {
           {/* Password input field. */}
           <div>
             <label className="text-xs tracking-[0.22em] text-brand-muted">PASSWORD</label>
-            <input
-              className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
-              type="password"
+            <PasswordInput
+              className="mt-2"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={setPassword}
+              visible={showPassword}
+              onToggleVisibility={() => setShowPassword((prev) => !prev)}
             />
           </div>
 
@@ -207,12 +211,12 @@ export default function UserLoginPage() {
               onChange={(e) => setRecoverPhone(e.target.value)}
               placeholder="Phone number"
             />
-            <input
-              type="password"
-              className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-2 text-sm outline-none focus:border-brand-gold/60"
+            <PasswordInput
               value={recoverOldPassword}
-              onChange={(e) => setRecoverOldPassword(e.target.value)}
+              onChange={setRecoverOldPassword}
               placeholder="Old password"
+              visible={showRecoverOldPassword}
+              onToggleVisibility={() => setShowRecoverOldPassword((prev) => !prev)}
             />
             <button type="button" disabled={recoverLoading} onClick={verifyRecovery} className="btn btn-outline btn-block py-2">
               {recoverLoading ? "VERIFYING..." : "VERIFY"}
@@ -220,12 +224,12 @@ export default function UserLoginPage() {
 
             {resetToken ? (
               <>
-                <input
-                  type="password"
-                  className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-2 text-sm outline-none focus:border-brand-gold/60"
+                <PasswordInput
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={setNewPassword}
                   placeholder="New password (8+ alphanumeric)"
+                  visible={showNewPassword}
+                  onToggleVisibility={() => setShowNewPassword((prev) => !prev)}
                 />
                 <button
                   type="button"
@@ -242,6 +246,41 @@ export default function UserLoginPage() {
 
         {recoverMessage ? <div className="mt-3 text-xs text-emerald-400">{recoverMessage}</div> : null}
       </div>
+    </div>
+  );
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  visible,
+  onToggleVisibility,
+  className = "",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  visible: boolean;
+  onToggleVisibility: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={`relative ${className}`}>
+      <input
+        className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 pr-16 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+        type={visible ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-muted hover:text-brand-text"
+        onClick={onToggleVisibility}
+      >
+        {visible ? "Hide" : "Show"}
+      </button>
     </div>
   );
 }

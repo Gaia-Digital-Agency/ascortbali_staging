@@ -12,7 +12,7 @@ A premium service marketplace platform connecting **Registered Users** with **Cr
 | **Backend** | Express 4, PostgreSQL via `pg`, JWT (EdDSA/Ed25519) |
 | **Database** | PostgreSQL (Cloud SQL on GCP) |
 | **Engine** | Python 3 — Selenium scraping, EasyOCR, LaMa inpainting |
-| **Storage** | Google Cloud Storage (`gda-s01-bucket`) |
+| **Storage** | Google Cloud Storage (`gda-ce01-bucket` uploads + `gda-s01-bucket` static) |
 | **Infra** | GCP Compute Engine, NGINX, PM2, Secret Manager |
 | **Workspace** | PNPM 9.12.3 monorepo |
 
@@ -59,7 +59,7 @@ AscortBali/
 - **`app_accounts`** — Admin and user auth (`id UUID`, `role`, `username`, `password`)
 - **`user_profiles`** — Registered user profiles (1:1 with `app_accounts`, CASCADE delete)
 - **`providers`** — Creator profiles (`uuid PK`, `provider_id UNIQUE`, extensive profile fields)
-- **`provider_images`** — Creator gallery, 7 slots per creator (`sequence_number 1-7`)
+- **`provider_images`** — Creator gallery, up to 20 slots per creator (`sequence_number 1-20`)
 - **`advertising_spaces`** — Homepage ad slots (`home-1`, `home-2`, `home-3`, `bottom`)
 - **`advertising_space_history`** — Audit trail for ad changes
 
@@ -109,7 +109,7 @@ AscortBali/
 | `/user/logged` | User profile CRUD | User |
 | `/user/register` | Registration notice | No |
 | `/creator` | Creator login | No |
-| `/creator/logged` | Creator profile + 7-image gallery CRUD | Creator |
+| `/creator/logged` | Creator profile + 20-image gallery CRUD | Creator |
 | `/creator/preview/[uuid]` | Creator detail page | No (blurred for non-auth) |
 | `/services` | Service catalog (planned) | No |
 | `/services/[id]` | Service detail (planned) | No |
@@ -175,10 +175,14 @@ Web (Next.js renders pages, images served via GCS or local assets)
 
 ### Image Serving
 - **Local dev:** Images from `app/Assets/Creator/clean_image/`
-- **Production:** GCS bucket `gda-s01-bucket`
-  - Static assets: `baligirls/static/`
-  - Uploads: `baligirls/uploads/`
+- **Production:** GCS-backed routes
+  - Creator clean images + uploads: `gs://gda-ce01-bucket/baligirls_uploads/`
+  - Static assets: `gs://gda-s01-bucket/baligirls/static/`
 - **Middleware** rewrites public asset paths to GCS-backed API routes
+
+### SEO Files
+- `app/web/public/robots.txt` is served at `/baligirls/robots.txt`
+- `app/web/public/sitemap.xml` is served at `/baligirls/sitemap.xml`
 
 ---
 
@@ -189,7 +193,7 @@ Web (Next.js renders pages, images served via GCS or local assets)
 | **VM** | `gda-s01`, Ubuntu 24.04 LTS, `asia-southeast1-b` |
 | **Public IP** | `34.124.244.233` |
 | **Cloud SQL** | Instance `baligirls`, IP `136.110.3.46` |
-| **GCS Bucket** | `gda-s01-bucket` |
+| **GCS Buckets** | `gda-ce01-bucket` (uploads), `gda-s01-bucket` (static) |
 | **Secrets** | Secret Manager (JWT keys, DB password, HMAC secret) |
 
 ### Process Management (PM2)
@@ -298,7 +302,7 @@ Edit the `colors.brand` object to reskin the app.
 | Admin ad CRUD (3 image slots + bottom text) | Done |
 | User compulsory profile CRUD | Done |
 | Creator profile CRUD | Done |
-| Creator 7-image gallery CRUD | Done |
+| Creator 20-image gallery CRUD | Done |
 | Homepage creator grid with filters | Done |
 | Homepage pagination (50/50/35 baseline) | Done |
 | GCS integration (uploads + static) | Done |

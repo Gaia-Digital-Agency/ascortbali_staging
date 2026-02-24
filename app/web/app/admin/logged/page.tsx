@@ -66,6 +66,8 @@ export default function AdminDashboard() {
   const [pwNew, setPwNew] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const [showPwCurrent, setShowPwCurrent] = useState(false);
+  const [showPwNew, setShowPwNew] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -223,19 +225,19 @@ export default function AdminDashboard() {
       <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7 shadow-luxe">
         <div className="text-xs tracking-[0.22em] text-brand-muted">CHANGE PASSWORD</div>
         <div className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-          <input
-            type="password"
-            className="rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+          <PasswordInput
             value={pwCurrent}
-            onChange={(e) => setPwCurrent(e.target.value)}
+            onChange={setPwCurrent}
             placeholder="Current password"
+            visible={showPwCurrent}
+            onToggleVisibility={() => setShowPwCurrent((prev) => !prev)}
           />
-          <input
-            type="password"
-            className="rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+          <PasswordInput
             value={pwNew}
-            onChange={(e) => setPwNew(e.target.value)}
+            onChange={setPwNew}
             placeholder="New password"
+            visible={showPwNew}
+            onToggleVisibility={() => setShowPwNew((prev) => !prev)}
           />
           <button onClick={changePassword} disabled={pwSaving || !pwNew.trim()} className="btn btn-primary py-3">
             {pwSaving ? "SAVING..." : "UPDATE"}
@@ -245,6 +247,39 @@ export default function AdminDashboard() {
       </div>
 
       {error ? <div className="text-xs text-red-400">{error}</div> : null}
+    </div>
+  );
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  visible,
+  onToggleVisibility,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  visible: boolean;
+  onToggleVisibility: () => void;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={visible ? "text" : "password"}
+        className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 pr-16 text-sm outline-none focus:border-brand-gold/60"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-muted hover:text-brand-text"
+        onClick={onToggleVisibility}
+      >
+        {visible ? "Hide" : "Show"}
+      </button>
     </div>
   );
 }

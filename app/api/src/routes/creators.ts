@@ -36,6 +36,8 @@ creatorsRouter.get("/", async (req, res) => {
            SELECT image_file
              FROM provider_images
             WHERE provider_uuid = p.uuid
+              AND image_file IS NOT NULL
+              AND BTRIM(image_file) <> ''
             ORDER BY sequence_number ASC, image_id ASC
             LIMIT 1
          ) AS img ON true

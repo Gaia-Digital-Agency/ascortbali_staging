@@ -159,7 +159,7 @@ export default async function Page({
     if (selectedAge) params.set("age", selectedAge);
     if (selectedHeight) params.set("height", selectedHeight);
     if (selectedBustSize) params.set("bust_size", selectedBustSize);
-    return withBasePath(`/?${params.toString()}`);
+    return `/?${params.toString()}`;
   };
 
   return (
@@ -219,7 +219,7 @@ export default async function Page({
           <button className="btn btn-outline py-2" type="submit">
             APPLY FILTERS
           </button>
-          <Link className="btn btn-ghost py-2" href={withBasePath("/")}>
+          <Link className="btn btn-ghost py-2" href="/">
             CLEAR
           </Link>
         </form>

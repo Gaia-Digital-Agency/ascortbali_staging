@@ -40,6 +40,8 @@ export default function UserDashboard() {
   const [pwNew, setPwNew] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const [showPwCurrent, setShowPwCurrent] = useState(false);
+  const [showPwNew, setShowPwNew] = useState(false);
 
   // Effect hook to fetch user data and profile on component mount.
   useEffect(() => {
@@ -206,19 +208,19 @@ export default function UserDashboard() {
         <div className="text-xs tracking-luxe text-brand-muted">CHANGE PASSWORD</div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <Field label="CURRENT PASSWORD">
-            <input
-              type="password"
-              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+            <PasswordInput
               value={pwCurrent}
-              onChange={(e) => setPwCurrent(e.target.value)}
+              onChange={setPwCurrent}
+              visible={showPwCurrent}
+              onToggleVisibility={() => setShowPwCurrent((prev) => !prev)}
             />
           </Field>
           <Field label="NEW PASSWORD">
-            <input
-              type="password"
-              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+            <PasswordInput
               value={pwNew}
-              onChange={(e) => setPwNew(e.target.value)}
+              onChange={setPwNew}
+              visible={showPwNew}
+              onToggleVisibility={() => setShowPwNew((prev) => !prev)}
             />
           </Field>
         </div>
@@ -239,6 +241,36 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <div className="text-xs tracking-[0.22em] text-brand-muted">{label}</div>
       <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  visible,
+  onToggleVisibility,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  visible: boolean;
+  onToggleVisibility: () => void;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={visible ? "text" : "password"}
+        className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 pr-16 text-sm outline-none focus:border-brand-gold/60"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-muted hover:text-brand-text"
+        onClick={onToggleVisibility}
+      >
+        {visible ? "Hide" : "Show"}
+      </button>
     </div>
   );
 }
