@@ -1,7 +1,7 @@
 // This module defines the server-side logic for displaying a single creator's preview page.
 import { notFound } from "next/navigation";
 import { API_BASE } from "../../../../lib/api";
-import { withBasePath } from "../../../../lib/paths";
+import { APP_BASE_PATH, withBasePath } from "../../../../lib/paths";
 import fs from "fs/promises";
 import path from "path";
 import CreatorPreviewClient from "./CreatorPreviewClient";
@@ -45,6 +45,11 @@ type ImageRow = {
 // Utility function to convert an image file path to a displayable URL.
 const toImageUrl = (file?: string) => {
   if (!file) return null;
+  if (file.startsWith("http://") || file.startsWith("https://")) return file;
+  if (file.startsWith("/")) {
+    if (APP_BASE_PATH && file.startsWith(`${APP_BASE_PATH}/`)) return file;
+    return withBasePath(file);
+  }
   const parts = file.split("/");
   const filename = parts[parts.length - 1];
   return withBasePath(`/api/clean-image/${encodeURIComponent(filename)}`);
@@ -121,7 +126,7 @@ export default async function CreatorPreview({ params }: { params: { id: string 
   if (!creator) return notFound();
 
   // Prepare data for the client component.
-  const imagesLimited = images.slice(0, 7);
+  const imagesLimited = images.slice(0, 20);
   const primaryImageUrl = toImageUrl(imagesLimited[0]?.file);
   const hairLength = creator["Hair length"] || creator["Hair lenght"];
 
@@ -157,14 +162,16 @@ export default async function CreatorPreview({ params }: { params: { id: string 
       title={creator.Title ?? creator.name ?? "Creator"}
       subtitle="Sample page populated from `app/data/page_data.json`."
       creatorName={creator.name ?? "Creator"}
-      primaryImageUrl={primaryImageUrl ?? withBasePath("/placeholders/hero-1.jpg")}
+      primaryImageUrl={primaryImageUrl}
       primaryImageFile={imagesLimited[0]?.file ?? "—"}
       fields={fields}
-      images={imagesLimited.map((img) => ({
-        id: img.id,
-        file: img.file,
-        imageUrl: toImageUrl(img.file) ?? withBasePath("/placeholders/card-1.jpg"),
-      }))}
+      images={imagesLimited
+        .map((img) => ({
+          id: img.id,
+          file: img.file,
+          imageUrl: toImageUrl(img.file),
+        }))
+        .filter((img) => Boolean(img.imageUrl))}
       sourceUrl={creator.url ?? "—"}
     />
   );

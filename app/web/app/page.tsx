@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { BottomAdCard, MainAdSpaces } from "../components/AdvertisingSpaces";
 import { API_BASE } from "../lib/api";
-import { withBasePath } from "../lib/paths";
+import { APP_BASE_PATH, withBasePath } from "../lib/paths";
 import fs from "fs/promises";
 import path from "path";
 
@@ -39,6 +39,11 @@ type ImageRow = {
 // Utility function to construct an image URL from a filename.
 const toImageUrl = (file?: string | null) => {
   if (!file) return null;
+  if (file.startsWith("http://") || file.startsWith("https://")) return file;
+  if (file.startsWith("/")) {
+    if (APP_BASE_PATH && file.startsWith(`${APP_BASE_PATH}/`)) return file;
+    return withBasePath(file);
+  }
   const parts = file.split("/");
   const filename = parts[parts.length - 1];
   return withBasePath(`/api/clean-image/${encodeURIComponent(filename)}`);
@@ -154,7 +159,7 @@ export default async function Page({
     if (selectedAge) params.set("age", selectedAge);
     if (selectedHeight) params.set("height", selectedHeight);
     if (selectedBustSize) params.set("bust_size", selectedBustSize);
-    return `/?${params.toString()}`;
+    return withBasePath(`/?${params.toString()}`);
   };
 
   return (
@@ -210,11 +215,11 @@ export default async function Page({
         </div>
 
         {/* Filter action buttons */}
-        <form id="creator-filter-form" action="/" className="flex gap-3">
+        <form id="creator-filter-form" action={withBasePath("/")} className="flex gap-3">
           <button className="btn btn-outline py-2" type="submit">
             APPLY FILTERS
           </button>
-          <Link className="btn btn-ghost py-2" href="/">
+          <Link className="btn btn-ghost py-2" href={withBasePath("/")}>
             CLEAR
           </Link>
         </form>
@@ -266,6 +271,7 @@ export default async function Page({
             }
 
             const displayName = creator.model_name || creator.username || "Creator";
+            const imageUrl = toImageUrl(creator.image_file);
             return (
               // Creator card link
               <Link
@@ -274,11 +280,17 @@ export default async function Page({
                 className="group aspect-[9/16] overflow-hidden rounded-2xl border border-brand-line bg-brand-surface/50"
               >
                 <div className="h-[90%] overflow-hidden">
-                  <img
-                    src={toImageUrl(creator.image_file) ?? withBasePath("/placeholders/card-1.jpg")}
-                    alt={displayName}
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
-                  />
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={displayName}
+                      className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-black/30 text-xs tracking-[0.22em] text-brand-muted">
+                      NO IMAGE
+                    </div>
+                  )}
                 </div>
                 <div className="flex h-[10%] items-center justify-center border-t border-brand-line bg-black/40 px-2 text-xs uppercase tracking-[0.14em]">
                   {displayName}

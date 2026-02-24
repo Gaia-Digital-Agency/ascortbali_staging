@@ -4,14 +4,19 @@ import { Storage } from "@google-cloud/storage";
 // Configure GCS bucket name and object prefixes from environment variables.
 // Use bracket access so Next/webpack doesn't eagerly inline env vars at build time.
 // We want the runtime env from `next start` / PM2 to be honored.
-const bucketName = process.env["GCS_BUCKET_NAME"] ?? "gda-s01";
-const rawPrefix = process.env["GCS_UPLOAD_PREFIX"] ?? "baligirls/uploads";
+const bucketName = process.env["GCS_BUCKET_NAME"] ?? "gda-ce01-bucket";
+const rawPrefix = process.env["GCS_UPLOAD_PREFIX"] ?? "baligirls_uploads";
 const objectPrefix = rawPrefix.replace(/^\/+|\/+$/g, "");
 const storage = new Storage();
+const staticBucketName = process.env["GCS_STATIC_BUCKET_NAME"] ?? bucketName;
 
 // Returns the GCS bucket instance.
 function bucket() {
   return storage.bucket(bucketName);
+}
+
+function staticBucket() {
+  return storage.bucket(staticBucketName);
 }
 
 // Constructs the full GCS object key for a given filename.
@@ -20,7 +25,7 @@ export function getObjectKey(filename: string) {
 }
 
 // Configure GCS static asset prefix from environment variables.
-const rawStaticPrefix = process.env["GCS_STATIC_PREFIX"] ?? "baligirls/static";
+const rawStaticPrefix = process.env["GCS_STATIC_PREFIX"] ?? "baligirls_uploads";
 const staticPrefix = rawStaticPrefix.replace(/^\/+|\/+$/g, "");
 
 // Constructs the full GCS object key for a static asset.
@@ -48,6 +53,20 @@ export async function uploadObject(params: {
 // Downloads an object from GCS.
 export async function downloadObject(objectKey: string) {
   const file = bucket().file(objectKey);
+  const [exists] = await file.exists();
+  if (!exists) return null;
+
+  const [metadataResponse, downloadResponse] = await Promise.all([file.getMetadata(), file.download()]);
+  const [metadata] = metadataResponse;
+  const [data] = downloadResponse;
+  return {
+    contentType: metadata.contentType ?? "application/octet-stream",
+    data,
+  };
+}
+
+export async function downloadStaticObject(objectKey: string) {
+  const file = staticBucket().file(objectKey);
   const [exists] = await file.exists();
   if (!exists) return null;
 

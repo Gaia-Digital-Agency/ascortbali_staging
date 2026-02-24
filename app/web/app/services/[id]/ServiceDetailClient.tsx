@@ -45,10 +45,10 @@ export function ServiceDetailClient({ service }: { service: Service }) {
   const thumbnailImages = useMemo(() => {
     const galleryImages = Array.isArray(service.galleryImages) ? service.galleryImages : [];
     return [
-      galleryImages[0] || withBasePath("/placeholders/card-2.jpg"),
-      galleryImages[1] || withBasePath("/placeholders/card-3.jpg"),
-      galleryImages[2] || withBasePath("/placeholders/hero-1.jpg"),
-      galleryImages[3] || withBasePath("/placeholders/card-2.jpg"),
+      galleryImages[0] || withBasePath("/api/static/placeholders/card-2.jpg"),
+      galleryImages[1] || withBasePath("/api/static/placeholders/card-3.jpg"),
+      galleryImages[2] || withBasePath("/api/static/placeholders/hero-1.jpg"),
+      galleryImages[3] || withBasePath("/api/static/placeholders/card-2.jpg"),
     ];
   }, [service.galleryImages]);
 
@@ -68,7 +68,7 @@ export function ServiceDetailClient({ service }: { service: Service }) {
             {/* Main service image display. */}
             <div className="relative h-[420px] overflow-hidden rounded-3xl border border-brand-line">
               <img
-                src={service.mainImageUrl || withBasePath("/placeholders/hero-1.jpg")}
+                src={service.mainImageUrl || withBasePath("/api/static/placeholders/hero-1.jpg")}
                 alt={service.title}
                 className="h-full w-full object-cover"
               />

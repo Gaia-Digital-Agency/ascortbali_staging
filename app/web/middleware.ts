@@ -11,12 +11,18 @@ export function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
   const basePath = url.basePath || "";
   const pathname = url.pathname || "/";
+  const configuredBasePath =
+    (process.env.NEXT_PUBLIC_BASE_PATH || process.env.NEXT_BASE_PATH || "").trim().replace(/\/+$/g, "");
+  const mountPrefix =
+    basePath ||
+    configuredBasePath ||
+    (pathname === "/baligirls" || pathname.startsWith("/baligirls/") ? "/baligirls" : "");
 
-  // Strip basePath for matching, keep it for rewrite destinations.
-  const logical = basePath && pathname.startsWith(basePath) ? pathname.slice(basePath.length) || "/" : pathname;
+  // Strip basePath (or /baligirls mount prefix) for matching.
+  const logical = mountPrefix && pathname.startsWith(mountPrefix) ? pathname.slice(mountPrefix.length) || "/" : pathname;
 
   const rewriteToStatic = (rel: string) => {
-    url.pathname = `${basePath}/api/static/${rel}`.replace(/\/{2,}/g, "/");
+    url.pathname = `${mountPrefix}/api/static/${rel}`.replace(/\/{2,}/g, "/");
     return NextResponse.rewrite(url);
   };
 
@@ -33,4 +39,3 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: ["/:path*"],
 };
-

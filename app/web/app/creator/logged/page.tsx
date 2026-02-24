@@ -49,13 +49,17 @@ type CreatorImage = {
 
 const toImageUrl = (file?: string | null) => {
   if (!file) return null;
-  if (file.startsWith("/")) return file;
+  if (file.startsWith("http://") || file.startsWith("https://")) return file;
+  if (file.startsWith("/")) {
+    if (APP_BASE_PATH && file.startsWith(`${APP_BASE_PATH}/`)) return file;
+    return withBasePath(file);
+  }
   const parts = file.split("/");
   const filename = parts[parts.length - 1];
   return withBasePath(`/api/clean-image/${encodeURIComponent(filename)}`);
 };
 
-const defaultSlots = Array.from({ length: 7 }, (_, i) => i + 1);
+const defaultSlots = Array.from({ length: 20 }, (_, i) => i + 1);
 const APP_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const CREATOR_NAME_REGEX = /^[A-Za-z0-9]{1,50}$/;
 
@@ -71,6 +75,8 @@ export default function CreatorPanel() {
   const [pwNew, setPwNew] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const [showPwCurrent, setShowPwCurrent] = useState(false);
+  const [showPwNew, setShowPwNew] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -389,21 +395,21 @@ export default function CreatorPanel() {
         <div className="text-xs tracking-luxe text-brand-muted">CHANGE PASSWORD</div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <Field label="CURRENT PASSWORD">
-            <input
-              type="password"
-              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+            <PasswordInput
               value={pwCurrent}
-              onChange={(e) => setPwCurrent(e.target.value)}
+              onChange={setPwCurrent}
               placeholder="Current password (or temp password)"
+              visible={showPwCurrent}
+              onToggleVisibility={() => setShowPwCurrent((prev) => !prev)}
             />
           </Field>
           <Field label="NEW PASSWORD">
-            <input
-              type="password"
-              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+            <PasswordInput
               value={pwNew}
-              onChange={(e) => setPwNew(e.target.value)}
+              onChange={setPwNew}
               placeholder="New password"
+              visible={showPwNew}
+              onToggleVisibility={() => setShowPwNew((prev) => !prev)}
             />
           </Field>
         </div>
@@ -416,7 +422,7 @@ export default function CreatorPanel() {
       </section>
 
       <section className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7">
-        <div className="text-xs tracking-luxe text-brand-muted">IMAGES (7 SLOTS: 1 MAIN + 6 OTHERS)</div>
+        <div className="text-xs tracking-luxe text-brand-muted">IMAGES (20 SLOTS: 1 MAIN + 19 OTHERS)</div>
         <div className="mt-5 grid gap-5 md:grid-cols-3">
           {defaultSlots.map((slot) => {
             const existing = images.find((img) => img.sequence_number === slot);
@@ -424,7 +430,7 @@ export default function CreatorPanel() {
               <ImageSlotEditor
                 key={slot}
                 slot={slot}
-                imageUrl={toImageUrl(existing?.image_file || imageInputs[slot])}
+                imageUrl={toImageUrl(imageInputs[slot] || existing?.image_file)}
                 rawValue={imageInputs[slot] ?? existing?.image_file ?? ""}
                 busy={savingImageSlot === slot}
                 onValueChange={(value) => setImageInputs((prev) => ({ ...prev, [slot]: value }))}
@@ -474,6 +480,39 @@ function ChoiceGroup({
           </label>
         ))}
       </div>
+    </div>
+  );
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  visible,
+  onToggleVisibility,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  visible: boolean;
+  onToggleVisibility: () => void;
+}) {
+  return (
+    <div className="relative">
+      <input
+        className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 pr-16 text-sm outline-none focus:border-brand-gold/60"
+        type={visible ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-muted hover:text-brand-text"
+        onClick={onToggleVisibility}
+      >
+        {visible ? "Hide" : "Show"}
+      </button>
     </div>
   );
 }

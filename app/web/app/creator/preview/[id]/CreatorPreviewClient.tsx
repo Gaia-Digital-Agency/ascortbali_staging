@@ -3,16 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../../../lib/api";
-import { withBasePath } from "../../../../lib/paths";
 
 type Props = {
   title: string;
   subtitle: string;
   creatorName: string;
-  primaryImageUrl: string;
+  primaryImageUrl: string | null;
   primaryImageFile: string;
   fields: Array<[string, string | number | undefined]>;
-  images: Array<{ id?: string; file?: string; imageUrl?: string }>;
+  images: Array<{ id?: string; file?: string; imageUrl?: string | null }>;
   sourceUrl: string;
 };
 
@@ -50,7 +49,11 @@ export default function CreatorPreviewClient(props: Props) {
         <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-6">
           <div className="text-xs tracking-luxe text-brand-muted">PRIMARY IMAGE</div>
           <div className="mt-4 aspect-[9/16] overflow-hidden rounded-2xl border border-brand-line">
-            <img src={props.primaryImageUrl} alt={props.creatorName} className="h-full w-full object-cover" />
+            {props.primaryImageUrl ? (
+              <img src={props.primaryImageUrl} alt={props.creatorName} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs text-brand-muted">NO IMAGE</div>
+            )}
           </div>
           <div className="mt-3 text-xs text-brand-muted">Source image file: {props.primaryImageFile}</div>
         </div>
@@ -96,11 +99,15 @@ export default function CreatorPreviewClient(props: Props) {
                 rel="noreferrer"
               >
                 <div className="aspect-[9/16] w-full overflow-hidden">
-                  <img
-                    src={img.imageUrl ?? withBasePath("/placeholders/card-1.jpg")}
-                    alt={img.id ?? "Clean image"}
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
-                  />
+                  {img.imageUrl ? (
+                    <img
+                      src={img.imageUrl}
+                      alt={img.id ?? "Clean image"}
+                      className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-brand-muted">NO IMAGE</div>
+                  )}
                 </div>
                 <div className="p-3 text-xs text-brand-muted">{img.file ?? "—"}</div>
               </a>

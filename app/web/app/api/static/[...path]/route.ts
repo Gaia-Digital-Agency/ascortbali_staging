@@ -1,6 +1,6 @@
 // This route serves static assets from Google Cloud Storage.
 import { NextResponse } from "next/server";
-import { downloadObject, getStaticKey } from "../../../../lib/gcs";
+import { downloadStaticObject, getStaticKey } from "../../../../lib/gcs";
 
 // GET handler for serving a single static asset from GCS.
 export async function GET(_req: Request, { params }: { params: { path: string[] } }) {
@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: { params: { path: string[] 
   // Download the requested object from GCS and serve it.
   const relPath = parts.join("/");
   const objectKey = getStaticKey(relPath);
-  const file = await downloadObject(objectKey);
+  const file = await downloadStaticObject(objectKey);
   if (!file) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -30,4 +30,3 @@ export async function GET(_req: Request, { params }: { params: { path: string[] 
     },
   });
 }
-
