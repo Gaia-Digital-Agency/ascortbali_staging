@@ -17,13 +17,13 @@ type AdSpace = {
 const defaultAds: AdSpace[] = [
   {
     slot: "home-1",
-    image: withBasePath("/api/admin-asset/unique.png"),
+    image: withBasePath("/api/uploads/baligirls/ads/unique.png"),
     text: null,
     link_url: "https://lightcyan-horse-210187.hostingersite.com/",
   },
   {
     slot: "home-2",
-    image: withBasePath("/api/admin-asset/humapedia.png"),
+    image: withBasePath("/api/uploads/baligirls/ads/humapedia.png"),
     text: null,
     link_url: "https://www.humanspedia.com/",
   },
@@ -308,6 +308,7 @@ function ImageAdEditor({
   const upload = async (file: File) => {
     const form = new FormData();
     form.append("file", file);
+    form.append("folder", "ads");
     const res = await fetch(`${APP_BASE_PATH}/api/upload`, { method: "POST", body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error ?? "Upload failed");

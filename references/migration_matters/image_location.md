@@ -9,11 +9,12 @@ Generated: 2026-02-08 17:32:55
 - Deployed repo path on VM: `/var/www/baligirls`
 - App base path (NGINX mount): `/baligirls`
 - Cloud SQL instance: `baligirls` (database `ascortbali`)
-- Cloud Storage bucket for uploads: `gs://gda-s01-bucket/baligirls/uploads/...`
+- Cloud Storage bucket for uploads: `gs://gda-ce01-bucket/baligirls/uploads/...`
 
 Notes:
 - Below are repo-tracked images (Assets/Public/backups). They live on the VM filesystem when the repo is synced.
 - User uploads live in GCS under `baligirls/uploads` and are served via `/baligirls/api/uploads/<object-key>`.
+- Homepage ad images are stored in `gs://gda-ce01-bucket/baligirls/ads/` and referenced from `advertising_spaces.image`.
 
 ## VM Paths
 

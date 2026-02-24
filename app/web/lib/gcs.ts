@@ -5,7 +5,7 @@ import { Storage } from "@google-cloud/storage";
 // Use bracket access so Next/webpack doesn't eagerly inline env vars at build time.
 // We want the runtime env from `next start` / PM2 to be honored.
 const bucketName = process.env["GCS_BUCKET_NAME"] ?? "gda-ce01-bucket";
-const rawPrefix = process.env["GCS_UPLOAD_PREFIX"] ?? "baligirls_uploads";
+const rawPrefix = process.env["GCS_UPLOAD_PREFIX"] ?? "baligirls/uploads";
 const objectPrefix = rawPrefix.replace(/^\/+|\/+$/g, "");
 const storage = new Storage();
 const staticBucketName = process.env["GCS_STATIC_BUCKET_NAME"] ?? bucketName;

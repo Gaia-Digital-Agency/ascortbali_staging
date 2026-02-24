@@ -283,8 +283,8 @@ def main() -> int:
                     """
                     INSERT INTO advertising_spaces (slot, image, text, link_url)
                     VALUES
-                      ('home-1', '/api/admin-asset/unique.png', NULL, 'https://lightcyan-horse-210187.hostingersite.com/'),
-                      ('home-2', '/api/admin-asset/humapedia.png', NULL, 'https://www.humanspedia.com/'),
+                      ('home-1', '/api/uploads/baligirls/ads/unique.png', NULL, 'https://lightcyan-horse-210187.hostingersite.com/'),
+                      ('home-2', '/api/uploads/baligirls/ads/humapedia.png', NULL, 'https://www.humanspedia.com/'),
                       ('home-3', NULL, NULL, 'https://www.baligirls.com/'),
                       ('bottom', NULL, 'Your Ads Here', NULL)
                     ON CONFLICT (slot) DO UPDATE SET

@@ -24,13 +24,13 @@ const fallbackLinkBySlot: Record<string, string> = {
 const fallbackAds: AdSpace[] = [
   {
     slot: "home-1",
-    image: withBasePath("/api/admin-asset/unique.png"),
+    image: withBasePath("/api/uploads/baligirls/ads/unique.png"),
     text: null,
     link_url: fallbackLinkBySlot["home-1"],
   },
   {
     slot: "home-2",
-    image: withBasePath("/api/admin-asset/humapedia.png"),
+    image: withBasePath("/api/uploads/baligirls/ads/humapedia.png"),
     text: null,
     link_url: fallbackLinkBySlot["home-2"],
   },

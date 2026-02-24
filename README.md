@@ -176,7 +176,8 @@ Web (Next.js renders pages, images served via GCS or local assets)
 ### Image Serving
 - **Local dev:** Images from `app/Assets/Creator/clean_image/`
 - **Production:** GCS-backed routes
-  - Creator clean images + uploads: `gs://gda-ce01-bucket/baligirls_uploads/`
+  - Creator clean images + uploads: `gs://gda-ce01-bucket/baligirls/uploads/`
+  - Homepage ad images: `gs://gda-ce01-bucket/baligirls/ads/`
   - Static assets: `gs://gda-s01-bucket/baligirls/static/`
 - **Middleware** rewrites public asset paths to GCS-backed API routes
 

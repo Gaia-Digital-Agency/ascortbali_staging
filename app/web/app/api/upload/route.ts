@@ -8,6 +8,7 @@ import { getObjectKey, uploadObject } from "../../../lib/gcs";
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
+  const folder = String(formData.get("folder") ?? "").trim().toLowerCase();
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   // Generate a unique filename and upload the file to GCS.
   const ext = path.extname(file.name) || ".jpg";
   const filename = `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
-  const objectKey = getObjectKey(filename);
+  const objectKey = folder === "ads" ? `baligirls/ads/${filename}` : getObjectKey(filename);
   await uploadObject({ objectKey, buffer, contentType });
 
   // Return the URL of the uploaded file.
