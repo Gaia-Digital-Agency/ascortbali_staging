@@ -13,8 +13,9 @@ export const metadata: Metadata = {
   title: "BaliGirls",
   description: "Service marketplace scaffold",
   icons: {
-    // `app/icon.png` is the primary favicon; this is a fallback/explicit hint.
-    icon: [{ url: "/icon.png", type: "image/png" }],
+    // Force base-path-aware favicon URL so mounted deployments load the tab icon.
+    icon: [{ url: withBasePath("/icon.png"), type: "image/png" }],
+    shortcut: [withBasePath("/icon.png")],
   },
 };
 
