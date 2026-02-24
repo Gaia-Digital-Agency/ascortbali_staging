@@ -38,6 +38,11 @@ const fallbackAds: AdSpace[] = [
   { slot: "bottom", image: null, text: "Your Ads Here", link_url: null },
 ];
 
+const fallbackImageBySlot: Partial<Record<AdSpace["slot"], string>> = {
+  "home-1": fallbackAds[0].image!,
+  "home-2": fallbackAds[1].image!,
+};
+
 // Normalizes an ad image URL to include the base path if necessary.
 function normalizeAdImage(image: string | null) {
   const raw = (image ?? "").trim();
@@ -66,11 +71,21 @@ export function useAdSpaces() {
         const data = (await res.json()) as AdSpace[];
         if (Array.isArray(data) && data.length) {
           const map = new Map(data.map((item) => [item.slot, normalizeAdSpace(item)]));
+          const mergeSlot = (slot: AdSpace["slot"], fallback: AdSpace) => {
+            const fromApi = map.get(slot);
+            if (!fromApi) return fallback;
+            return {
+              ...fallback,
+              ...fromApi,
+              image: fromApi.image ?? fallback.image,
+              link_url: fromApi.link_url ?? fallback.link_url,
+            };
+          };
           setAds([
-            map.get("home-1") ?? fallbackAds[0],
-            map.get("home-2") ?? fallbackAds[1],
-            map.get("home-3") ?? fallbackAds[2],
-            map.get("bottom") ?? fallbackAds[3],
+            mergeSlot("home-1", fallbackAds[0]),
+            mergeSlot("home-2", fallbackAds[1]),
+            mergeSlot("home-3", fallbackAds[2]),
+            mergeSlot("bottom", fallbackAds[3]),
           ]);
         }
       } catch {
@@ -99,7 +114,17 @@ export function MainAdSpaces() {
           className="aspect-[9/16] overflow-hidden rounded-3xl border border-brand-line bg-brand-surface/50 shadow-luxe"
         >
           {ad.image ? (
-            <img src={ad.image} alt={ad.slot} className="h-full w-full object-cover" />
+            <img
+              src={ad.image}
+              alt={ad.slot}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                const fallbackImage = fallbackImageBySlot[ad.slot];
+                if (!fallbackImage) return;
+                if (event.currentTarget.src.endsWith(fallbackImage)) return;
+                event.currentTarget.src = fallbackImage;
+              }}
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs tracking-[0.22em] text-brand-muted">
               EMPTY SLOT
