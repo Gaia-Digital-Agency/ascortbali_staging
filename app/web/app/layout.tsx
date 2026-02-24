@@ -37,9 +37,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 className="h-8 w-8 object-contain"
               />
               <span className="font-display text-lg tracking-[0.22em] text-brand-gold">BALIGIRLS</span>
-              <span className="hidden text-xs tracking-luxe text-brand-muted md:block">
-                premium marketplace
-              </span>
               <span className="ml-1 h-[1px] w-10 bg-brand-gold/70 opacity-70 transition group-hover:opacity-100" />
             </Link>
 

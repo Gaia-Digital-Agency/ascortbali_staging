@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { apiFetch } from "../../../../lib/api";
+import { apiFetch, getAccessToken, getRefreshToken } from "../../../../lib/api";
 
 type Props = {
   title: string;
@@ -20,6 +20,11 @@ export default function CreatorPreviewClient(props: Props) {
   const [canViewFull, setCanViewFull] = useState(false);
 
   useEffect(() => {
+    const hasAuthToken = Boolean(getAccessToken() || getRefreshToken());
+    if (!hasAuthToken) {
+      setCanViewFull(false);
+      return;
+    }
     (async () => {
       try {
         const me = await apiFetch("/me");
