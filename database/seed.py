@@ -4,6 +4,8 @@ import os
 import psycopg2
 import re
 
+MAX_SEQUENCE_NUMBER = 20
+
 
 def to_int(value):
     try:
@@ -86,6 +88,12 @@ def normalize_page(p):
     }
 
 
+def is_placeholder_page(raw):
+    title = str(raw.get("Title") or "").strip().lower()
+    name = str(raw.get("name") or raw.get("Model name") or "").strip().lower()
+    return title == "page not found" or name == "page not found"
+
+
 def get_conn():
     dsn = os.getenv("DATABASE_URL")
     if dsn:
@@ -112,13 +120,16 @@ def main() -> int:
         return 1
 
     with open(page_path, "r", encoding="utf-8") as f:
-        pages = json.load(f)
+        all_pages = json.load(f)
     with open(image_path, "r", encoding="utf-8") as f:
         images = json.load(f)
 
-    if not isinstance(pages, list) or not isinstance(images, list):
+    if not isinstance(all_pages, list) or not isinstance(images, list):
         print("Invalid data format in page_data.json or image_data.json")
         return 1
+
+    pages = [p for p in all_pages if isinstance(p, dict) and not is_placeholder_page(p)]
+    valid_provider_uuids = {str(p.get("uuid")) for p in pages if p.get("uuid")}
 
     conn = get_conn()
     try:
@@ -228,12 +239,14 @@ def main() -> int:
                     provider_uuid = img.get("page_uuid")
                     if not image_id or not provider_uuid:
                         continue
+                    if provider_uuid not in valid_provider_uuids:
+                        continue
 
                     match = re.search(r"(\d+)$", image_id)
                     sequence_number = int(match.group(1)) if match else None
                     if not sequence_number:
                         continue
-                    if sequence_number > 7:
+                    if sequence_number > MAX_SEQUENCE_NUMBER:
                         continue
 
                     # Keep (provider_uuid, sequence_number) unique by removing stale row first.
@@ -282,7 +295,10 @@ def main() -> int:
                     """
                 )
 
-        print(f"Seeded {len(pages)} providers and {len(images)} images.")
+        print(
+            f"Seeded {len(pages)} providers and up to {MAX_SEQUENCE_NUMBER} image slots per provider "
+            f"(from {len(images)} source image rows)."
+        )
     finally:
         conn.close()
 
