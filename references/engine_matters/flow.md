@@ -32,7 +32,22 @@ Process:
 Outputs:
 - `app/data/clean_image/IM_<id>.<ext>`
 
-## Step 3 — Data Assembly (Database-Ready)
+## Step 3 — GitHub Image Sync + Working Folders
+Run:
+- `git pull --ff-only origin main`
+
+Purpose:
+- Keep local image assets aligned with the latest GitHub source of truth before continuing processing.
+
+Image Working Folders:
+- `engine/watermark/clean_reject/`
+  - Images where watermark removal was attempted but result quality is not good.
+- `engine/watermark/need_work/`
+  - Images that still need manual/creator review, saved with creator-attached filename sequence.
+- `engine/watermark/watermark_images/target/`
+  - Scraped source watermark images extracted from the scraping process.
+
+## Step 4 — Data Assembly (Database-Ready)
 Run:
 - `python3 engine/build_data.py`
 
@@ -47,7 +62,8 @@ Outputs:
 ## Execution Order
 1. `engine/scrape_full_image.py`
 2. `engine/remove_watermark.py`
-3. `python3 engine/build_data.py`
+3. `git pull --ff-only origin main`
+4. `python3 engine/build_data.py`
 
 ## End Results
 - `app/data/page_data.json`

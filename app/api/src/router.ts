@@ -11,8 +11,11 @@ import { creatorsRouter } from "./routes/creators.js";
 
 // Creates and configures the main API router.
 export function createRouter() {
+  // Initialize a new Express router.
   const r = Router();
   // Mount individual routers for different API sections.
+  // Each `r.use` call associates a base path with a specific router module.
+  // For example, all routes defined in `authRouter` will be prefixed with `/auth`.
   r.use("/auth", authRouter);
   r.use("/services", servicesRouter);
   r.use("/me", meRouter);
@@ -21,5 +24,6 @@ export function createRouter() {
   r.use("/ads", adsRouter);
   r.use("/creators", creatorsRouter);
   r.use("/admin", adminRouter);
+  // Return the configured main router.
   return r;
 }

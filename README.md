@@ -20,13 +20,13 @@ BaliGirls is a multi-role web application with public creator listings, filterin
 - Runtime: PM2 on Linux VM
 - Reverse proxy: NGINX (`/baligirls` base path)
 
-## GCP Use (Present)
+## Google Cloud Patform
 - Compute Engine VM hosts the app runtime (`baligirls-web`, `baligirls-api` under PM2).
 - Cloud SQL hosts PostgreSQL database for users, creators, images, and ad slots.
 - Google Cloud Storage hosts media assets.
 - Public traffic enters via VM public IP and NGINX routing.
 
-## GCS Use (Present)
+## Google Cloud Storage
 - Creator image/upload objects:
   - `gs://gda-ce01-bucket/baligirls/uploads/`
 - Homepage ad image objects:
@@ -36,6 +36,8 @@ BaliGirls is a multi-role web application with public creator listings, filterin
 - Next.js media routes:
   - `/baligirls/api/uploads/<object-key>` -> streams from GCS
   - `/baligirls/api/clean-image/<filename>` -> resolves creator image from GCS prefix
+
+  <div style="page-break-after: always;"></div>
 
 ## App Language and Frameworks
 - TypeScript
@@ -111,13 +113,15 @@ references/
   - `GET /baligirls/api/clean-image/<filename>` -> GCS object stream from creator prefix
 - Homepage ads use DB-configured paths in `advertising_spaces.image` and render via upload route URLs.
 
-## Storage and Media Paths (Current)
+## Storage and Media Paths
 - Creator clean images and uploads:
   - `gs://gda-ce01-bucket/baligirls/uploads/`
 - Homepage ad images:
   - `gs://gda-ce01-bucket/baligirls/ads/`
 - Static assets:
   - `gs://gda-s01-bucket/baligirls/static/`
+
+  <div style="page-break-after: always;"></div>
 
 ## App Compiling Steps
 ```bash

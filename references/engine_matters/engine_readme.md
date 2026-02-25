@@ -1,4 +1,4 @@
-# Engine — AI-Powered Data Intelligence Pipeline
+# Engine — Custom AI-Powered Intelligence Pipeline
 
 The `engine/` folder houses a proprietary multi-stage AI pipeline that combines autonomous web intelligence gathering, computer vision, neural network inference, and structured data assembly to produce production-ready datasets from unstructured web sources.
 
@@ -197,9 +197,9 @@ Output is consumed by `database/seed.py` for Cloud SQL injection and `gcloud sto
 
 ## SUCESS RATE
 
-- Total Images 1500
+- Total Images 1200
 - Total suceess 900
-- Success Rate 60%
+- Success Rate 80%
 - Autotmation: 95% (5% is due to cloudflare security feature work around)
 - Total Run Time For 1500 image processing: < 4 Hours (end to end)
 
@@ -207,6 +207,3 @@ Output is consumed by `database/seed.py` for Cloud SQL injection and `gcloud sto
 
 http://34.124.244.233/baligirls
 
-## Open Source
-
-All solutions are gathered through libraries of open license not requiring any paid subscription.
