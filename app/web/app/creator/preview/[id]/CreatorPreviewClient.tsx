@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch, getAccessToken, getRefreshToken } from "../../../../lib/api";
-import { withBasePath } from "../../../../lib/paths";
 
 type Props = {
   title: string;
@@ -47,7 +46,7 @@ export default function CreatorPreviewClient(props: Props) {
             BACK HOME
           </Link>
           {props.nextCreatorId && canViewFull ? (
-            <Link className="btn btn-outline" href={withBasePath(`/creator/preview/${props.nextCreatorId}`)}>
+            <Link className="btn btn-outline" href={`/creator/preview/${props.nextCreatorId}`}>
               NEXT
             </Link>
           ) : null}

@@ -62,7 +62,7 @@ export function AuthNavButton() {
   // Renders a logout button if logged in.
   return (
     <div className="flex items-center gap-2">
-      <Link className="btn btn-outline" href={withBasePath(profileHref)}>
+      <Link className="btn btn-outline" href={profileHref}>
         EDIT PROFILE
       </Link>
       <button

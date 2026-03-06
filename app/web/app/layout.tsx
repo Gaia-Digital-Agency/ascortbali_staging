@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             {/* Navigation buttons including authentication and pagination links. */}
             <nav className="flex flex-wrap items-center gap-2">
-              <Link href={withBasePath("/")} className="btn btn-outline py-2 text-[10px] tracking-[0.22em]">
+              <Link href="/" className="btn btn-outline py-2 text-[10px] tracking-[0.22em]">
                 BACK HOME
               </Link>
               <AuthNavButton />

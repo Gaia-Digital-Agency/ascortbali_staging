@@ -91,7 +91,7 @@ export function CreatorFilterControls({
           ))}
         </select>
 
-        <Link href={withBasePath("/")} className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-center text-xs tracking-[0.18em] text-brand-muted transition hover:border-brand-gold hover:text-brand-text">
+        <Link href="/" className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-center text-xs tracking-[0.18em] text-brand-muted transition hover:border-brand-gold hover:text-brand-text">
           CLEAR
         </Link>
       </div>

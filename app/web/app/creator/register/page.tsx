@@ -311,7 +311,7 @@ export default function CreatorRegisterPage() {
 
           <div className="text-center text-xs text-brand-muted">
             Already have an account?{" "}
-            <Link href={withBasePath("/creator")} className="text-brand-gold hover:underline">
+            <Link href="/creator" className="text-brand-gold hover:underline">
               Sign In
             </Link>
           </div>

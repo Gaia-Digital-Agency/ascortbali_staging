@@ -318,7 +318,7 @@ export default function UserRegisterPage() {
 
           <div className="text-center text-xs text-brand-muted">
             Already have an account?{" "}
-            <Link href={withBasePath("/user")} className="text-brand-gold hover:underline">
+            <Link href="/user" className="text-brand-gold hover:underline">
               Sign In
             </Link>
           </div>

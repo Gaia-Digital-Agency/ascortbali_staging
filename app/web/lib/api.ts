@@ -1,10 +1,16 @@
 // This module provides functions for interacting with the backend API.
 import { APP_BASE_PATH, withBasePath } from "./paths";
 
-// Determine the API base URL from environment variables or defaults.
+const browserApiBase = APP_BASE_PATH ? withBasePath("/api") : "/api";
+
+// In browser runtime, always use same-origin API path to avoid stale/baked host values.
+// On the server, keep env override support for local development and tooling.
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (APP_BASE_PATH ? withBasePath("/api") : "http://localhost:4000");
+  typeof window !== "undefined"
+    ? browserApiBase
+    : process.env.NEXT_PUBLIC_API_BASE_URL ??
+      process.env.API_BASE_URL ??
+      (APP_BASE_PATH ? withBasePath("/api") : "http://localhost:4000");
 
 export type Tokens = { accessToken: string; refreshToken: string };
 
