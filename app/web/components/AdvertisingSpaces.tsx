@@ -108,57 +108,59 @@ export function useAdSpaces() {
 
 // Skeleton placeholder shown while ad data is loading.
 function AdSkeleton() {
-  return (
-    <div className="aspect-[9/16] overflow-hidden rounded-3xl border border-brand-line bg-brand-surface/50 shadow-luxe" />
-  );
+  return <div className="aspect-[9/16] min-w-[82vw] overflow-hidden rounded-3xl border border-brand-line bg-brand-surface/50 shadow-luxe sm:min-w-[360px] md:min-w-[300px] lg:min-w-[340px] xl:min-w-[360px]" />;
 }
 
 // Component to display the main advertising spaces on the homepage.
 export function MainAdSpaces() {
   const ads = useAdSpaces();
 
-  // While fetching, render blank skeleton cards so no stale image flashes.
   if (ads === null) {
     return (
-      <div className="mx-auto grid max-w-xs gap-5 sm:max-w-none sm:grid-cols-2 md:grid-cols-3">
-        <AdSkeleton />
-        <AdSkeleton />
-        <AdSkeleton />
+      <div className="no-scrollbar overflow-x-auto pb-2">
+        <div className="flex gap-4 md:gap-5">
+          <AdSkeleton />
+          <AdSkeleton />
+          <AdSkeleton />
+        </div>
       </div>
     );
   }
 
   const homeAds = ads.filter((ad) => ad.slot !== "bottom");
+  if (homeAds.length === 0) return null;
 
   return (
-    <div className="mx-auto grid max-w-xs gap-5 sm:max-w-none sm:grid-cols-2 md:grid-cols-3">
-      {homeAds.map((ad) => (
-        <a
-          key={ad.slot}
-          href={ad.link_url ?? fallbackLinkBySlot[ad.slot] ?? "#"}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="aspect-[9/16] overflow-hidden rounded-3xl border border-brand-line bg-brand-surface/50 shadow-luxe"
-        >
-          {ad.image ? (
-            <img
-              src={ad.image}
-              alt={ad.slot}
-              className="h-full w-full object-cover"
-              onError={(event) => {
-                const fallbackImage = fallbackImageBySlot[ad.slot];
-                if (!fallbackImage) return;
-                if (event.currentTarget.src.endsWith(fallbackImage)) return;
-                event.currentTarget.src = fallbackImage;
-              }}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs tracking-[0.22em] text-brand-muted">
-              EMPTY SLOT
-            </div>
-          )}
-        </a>
-      ))}
+    <div className="no-scrollbar overflow-x-auto pb-2">
+      <div className="flex snap-x snap-mandatory gap-4 md:gap-5">
+        {homeAds.map((ad) => (
+          <a
+            key={ad.slot}
+            href={ad.link_url ?? fallbackLinkBySlot[ad.slot] ?? "#"}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="flex min-w-[82vw] snap-start overflow-hidden rounded-3xl border border-brand-line bg-brand-surface/50 shadow-luxe sm:min-w-[360px] md:min-w-[300px] lg:min-w-[340px] xl:min-w-[360px]"
+          >
+            {ad.image ? (
+              <img
+                src={ad.image}
+                alt={ad.slot}
+                className="h-full w-full object-cover"
+                onError={(event) => {
+                  const fallbackImage = fallbackImageBySlot[ad.slot];
+                  if (!fallbackImage) return;
+                  if (event.currentTarget.src.endsWith(fallbackImage)) return;
+                  event.currentTarget.src = fallbackImage;
+                }}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs tracking-[0.22em] text-brand-muted">
+                EMPTY SLOT
+              </div>
+            )}
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

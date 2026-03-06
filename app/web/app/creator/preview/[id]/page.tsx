@@ -28,11 +28,10 @@ type PageRow = {
   Height?: string;
   Weight?: string;
   "Bust size"?: string;
-  "Bust type"?: string;
-  "Pubic hair"?: string;
   "Meeting with"?: string;
   Services?: string;
   url?: string;
+  model_name?: string;
 };
 
 type ImageRow = {
@@ -55,12 +54,24 @@ const toImageUrl = (file?: string) => {
   return withBasePath(`/api/clean-image/${encodeURIComponent(filename)}`);
 };
 
+const normalizeCreatorName = (value?: string | null) => {
+  const raw = (value ?? "").trim();
+  if (!raw) return "Creator";
+  const stripped = raw
+    .replace(/^\s*(?:Escort|Girl|Miss)\s+/i, "")
+    .replace(/\s*-\s*.*$/, "")
+    .replace(/\s*[|,].*$/, "")
+    .trim();
+  return stripped || raw;
+};
+
 // Default asynchronous server component for Creator Preview page.
 export default async function CreatorPreview({ params }: { params: { id: string } }) {
   const uuid = params.id;
 
   let creator: PageRow | null = null;
   let images: ImageRow[] = [];
+  let nextCreatorId: string | null = null;
 
   try {
     // Attempt to fetch creator data from the API.
@@ -71,6 +82,7 @@ export default async function CreatorPreview({ params }: { params: { id: string 
       creator = {
         uuid: raw.uuid,
         ID: raw.provider_id,
+        model_name: raw.model_name,
         name: raw.model_name ?? raw.name,
         Title: raw.title,
         Age: raw.age,
@@ -85,11 +97,8 @@ export default async function CreatorPreview({ params }: { params: { id: string 
         "WeChat ID": raw.wechat_id,
         "Hair color": raw.hair_color,
         "Hair length": raw.hair_length,
-        "Pubic hair": raw.pubic_hair,
         Height: raw.height,
         Weight: raw.weight,
-        "Bust size": raw.bust_size,
-        "Bust type": raw.bust_type,
         "Meeting with": raw.meeting_with,
         Services: raw.services,
         url: raw.url,
@@ -129,12 +138,24 @@ export default async function CreatorPreview({ params }: { params: { id: string 
   const imagesLimited = images.slice(0, 20);
   const primaryImageUrl = toImageUrl(imagesLimited[0]?.file);
   const hairLength = creator["Hair length"] || creator["Hair lenght"];
+  const displayName = normalizeCreatorName(creator.model_name || creator.name || "Creator");
+
+  const nextPageUrl = `${API_BASE}/creators?page=1&limit=500`;
+  try {
+    const listRes = await fetch(nextPageUrl, { cache: "no-store" });
+    if (listRes.ok) {
+      const listData = (await listRes.json()) as { items?: Array<{ uuid?: string }> };
+      const list = Array.isArray(listData.items) ? listData.items : [];
+      const index = list.findIndex((item) => item.uuid === uuid);
+      if (index >= 0 && index + 1 < list.length) nextCreatorId = list[index + 1].uuid ?? null;
+    }
+  } catch {
+    nextCreatorId = null;
+  }
 
   // Define fields to display on the creator's profile.
   const fields: Array<[string, string | number | undefined]> = [
-    ["Provider ID", creator.ID],
-    ["Name", creator.name],
-    ["Title", creator.Title],
+    ["Name", displayName],
     ["Age", creator.Age],
     ["Gender", creator.Gender],
     ["Nationality", creator.Nationality],
@@ -143,15 +164,11 @@ export default async function CreatorPreview({ params }: { params: { id: string 
     ["Country", creator.Country],
     ["Location", creator.Location],
     ["Phone Number", creator["Phone Number"]],
-    ["Telegram ID", creator["Telegram ID"]],
     ["WeChat ID", creator["WeChat ID"]],
     ["Hair Color", creator["Hair color"]],
     ["Hair Length", hairLength],
     ["Height", creator.Height],
     ["Weight", creator.Weight],
-    ["Bust Size", creator["Bust size"]],
-    ["Bust Type", creator["Bust type"]],
-    ["Pubic Hair", creator["Pubic hair"]],
     ["Meeting With", creator["Meeting with"]],
     ["Services", creator.Services],
   ];
@@ -159,20 +176,17 @@ export default async function CreatorPreview({ params }: { params: { id: string 
   // Render the client-side CreatorPreviewClient component with fetched data.
   return (
     <CreatorPreviewClient
-      title={creator.Title ?? creator.name ?? "Creator"}
-      subtitle="Sample page populated from `app/data/page_data.json`."
-      creatorName={creator.name ?? "Creator"}
+      title={displayName}
+      creatorName={displayName}
       primaryImageUrl={primaryImageUrl}
-      primaryImageFile={imagesLimited[0]?.file ?? "—"}
+      nextCreatorId={nextCreatorId}
       fields={fields}
       images={imagesLimited
         .map((img) => ({
           id: img.id,
-          file: img.file,
           imageUrl: toImageUrl(img.file),
         }))
         .filter((img) => Boolean(img.imageUrl))}
-      sourceUrl={creator.url ?? "—"}
     />
   );
 }

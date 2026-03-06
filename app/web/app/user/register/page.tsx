@@ -27,9 +27,12 @@ const NATIONALITIES = [
 ];
 
 export default function UserRegisterPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [telegramId, setTelegramId] = useState("");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<"female" | "male" | "transgender">("male");
   const [ageGroup, setAgeGroup] = useState<"18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+">("25-34");
@@ -40,6 +43,8 @@ export default function UserRegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const phoneRegex = /^\+\d{1,4}\d{6,16}$/;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +58,25 @@ export default function UserRegisterPage() {
       setError("Password must be at least 6 characters.");
       return;
     }
+    const normalizedPhone = phoneNumber.replace(/[\s-]/g, "");
+    const normalizedWhatsapp = whatsappNumber.replace(/[\s-]/g, "");
+
+    if (!email.trim()) {
+      setError("Email is required.");
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setError("Please provide a valid email.");
+      return;
+    }
+    if (!phoneRegex.test(normalizedPhone)) {
+      setError("Phone number must include country code, e.g. +6281234567");
+      return;
+    }
+    if (!phoneRegex.test(normalizedWhatsapp)) {
+      setError("WhatsApp number must include country code, e.g. +6281234567");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -60,7 +84,7 @@ export default function UserRegisterPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          username: username.trim(),
+          email: email.trim(),
           password,
           fullName: fullName.trim(),
           gender,
@@ -69,21 +93,26 @@ export default function UserRegisterPage() {
           city: city.trim(),
           preferredContact,
           relationshipStatus,
+          phoneNumber: normalizedPhone,
+          whatsapp: normalizedWhatsapp,
+          telegramId: telegramId.trim() || undefined,
         }),
       });
       const json = await res.json();
       if (!res.ok) {
-        if (json?.error === "username_taken") throw new Error("Username is already taken. Choose another.");
+        if (json?.error === "username_taken") throw new Error("Email is already taken.");
         throw new Error(json?.error ?? "Registration failed.");
       }
       setTokens({ accessToken: json.accessToken, refreshToken: json.refreshToken });
-      window.location.href = withBasePath("/user/logged");
+      window.location.href = withBasePath("/");
     } catch (err: any) {
       setError(err.message ?? "Unable to register.");
     } finally {
       setLoading(false);
     }
   };
+
+  const fieldClass = "mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60";
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -96,15 +125,14 @@ export default function UserRegisterPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           {/* Account credentials */}
           <div>
-            <label className="text-xs tracking-[0.22em] text-brand-muted">USERNAME</label>
+            <label className="text-xs tracking-[0.22em] text-brand-muted">EMAIL</label>
             <input
               required
-              className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="your_username"
-              pattern="[a-zA-Z0-9_]+"
-              title="Letters, numbers, underscores only"
+              className={fieldClass}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              type="email"
             />
           </div>
 
@@ -114,7 +142,7 @@ export default function UserRegisterPage() {
               <input
                 required
                 type={showPassword ? "text" : "password"}
-                className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 pr-16 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+                className={`w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 pr-16 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
@@ -134,10 +162,46 @@ export default function UserRegisterPage() {
             <input
               required
               type={showPassword ? "text" : "password"}
-              className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+              className={fieldClass}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repeat password"
+            />
+          </div>
+
+          <hr className="border-brand-line" />
+
+          {/* Contact details */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs tracking-[0.22em] text-brand-muted">PHONE NUMBER</label>
+              <input
+                required
+                className={fieldClass}
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+6281234567890"
+              />
+            </div>
+            <div>
+              <label className="text-xs tracking-[0.22em] text-brand-muted">WHATSAPP</label>
+              <input
+                required
+                className={fieldClass}
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                placeholder="+6281234567890"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs tracking-[0.22em] text-brand-muted">TELEGRAM ID (OPTIONAL)</label>
+            <input
+              className={fieldClass}
+              value={telegramId}
+              onChange={(e) => setTelegramId(e.target.value)}
+              placeholder="@telegram_id"
             />
           </div>
 
@@ -148,7 +212,7 @@ export default function UserRegisterPage() {
             <label className="text-xs tracking-[0.22em] text-brand-muted">FULL NAME</label>
             <input
               required
-              className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+              className={fieldClass}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your full name"
@@ -160,7 +224,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">GENDER</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+                className={fieldClass}
                 value={gender}
                 onChange={(e) => setGender(e.target.value as any)}
               >
@@ -174,7 +238,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">AGE GROUP</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+                className={fieldClass}
                 value={ageGroup}
                 onChange={(e) => setAgeGroup(e.target.value as any)}
               >
@@ -193,7 +257,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">NATIONALITY</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+                className={fieldClass}
                 value={nationality}
                 onChange={(e) => setNationality(e.target.value)}
               >
@@ -208,7 +272,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">CITY</label>
               <input
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+                className={fieldClass}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="e.g. Bali"
@@ -221,7 +285,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">PREFERRED CONTACT</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+                className={fieldClass}
                 value={preferredContact}
                 onChange={(e) => setPreferredContact(e.target.value as any)}
               >
@@ -235,7 +299,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">RELATIONSHIP STATUS</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+                className={fieldClass}
                 value={relationshipStatus}
                 onChange={(e) => setRelationshipStatus(e.target.value as any)}
               >

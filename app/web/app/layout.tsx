@@ -4,13 +4,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AnalyticsBeacon } from "../components/AnalyticsBeacon";
 
+import { AgeGateModal } from "../components/AgeGateModal";
 import { FooterStatus } from "../components/FooterStatus";
 import { AuthNavButton } from "../components/AuthNavButton";
 import { withBasePath } from "../lib/paths";
 
 // Metadata for the application, used for SEO and browser tabs.
 export const metadata: Metadata = {
-  title: "BaliGirls",
+  title: "FREE BALI GIRLS",
   description: "Service marketplace scaffold",
   icons: {
     // Force base-path-aware favicon URL so mounted deployments load the tab icon.
@@ -36,25 +37,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 alt="BaliGirls"
                 className="h-8 w-8 object-contain"
               />
-              <span className="font-display text-lg tracking-[0.22em] text-brand-gold">BALIGIRLS</span>
+              <div className="leading-none">
+                <span className="font-display text-lg tracking-[0.22em] text-brand-gold">FREE BALI GIRLS</span>
+                <div className="mt-1 text-[10px] tracking-[0.22em] text-brand-muted">Tagline Goes Here</div>
+              </div>
               <span className="ml-1 h-[1px] w-10 bg-brand-gold/70 opacity-70 transition group-hover:opacity-100" />
             </Link>
 
             {/* Navigation buttons including authentication and pagination links. */}
             <nav className="flex flex-wrap items-center gap-2">
+              <Link href={withBasePath("/")} className="btn btn-outline py-2 text-[10px] tracking-[0.22em]">
+                BACK HOME
+              </Link>
               <AuthNavButton />
-              {[1, 2, 3].map((p) => (
-                <Link
-                  key={p}
-                  href={`/?page=${p}`}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-line text-[10px] font-semibold tracking-[0.22em] text-brand-muted hover:border-brand-gold hover:text-brand-gold"
-                >
-                  {p}
-                </Link>
-              ))}
             </nav>
           </div>
         </header>
+
+        <AgeGateModal />
 
         {/* Main content area where page-specific content is rendered. */}
         <main id="top" className="mx-auto max-w-6xl px-4 py-10">

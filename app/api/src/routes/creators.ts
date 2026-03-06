@@ -20,6 +20,7 @@ creatorsRouter.get("/", async (req, res) => {
               p.provider_id,
               p.title,
               p.model_name,
+              p.is_active,
               p.age,
               p.gender,
               p.nationality,
@@ -41,13 +42,14 @@ creatorsRouter.get("/", async (req, res) => {
             ORDER BY sequence_number ASC, image_id ASC
             LIMIT 1
          ) AS img ON true
+        WHERE p.is_active IS TRUE
         ORDER BY (img.image_file IS NULL) ASC, p.created_at DESC
         LIMIT $1
        OFFSET $2`,
       [limit, offset]
     ),
       // Query for the total number of creators.
-      pool.query("SELECT COUNT(*)::int AS total FROM providers"),
+      pool.query("SELECT COUNT(*)::int AS total FROM providers WHERE is_active IS TRUE"),
     ]);
     res.json({
       items: rowsRes.rows,
@@ -69,7 +71,8 @@ creatorsRouter.get("/:uuid", async (req, res) => {
     const creatorRes = await pool.query(
       `SELECT p.*
          FROM providers p
-        WHERE p.uuid = $1::uuid`,
+        WHERE p.uuid = $1::uuid
+          AND p.is_active IS TRUE`,
       [uuid]
     );
     if (creatorRes.rows.length === 0) {

@@ -47,7 +47,7 @@ export default function UserLoginPage() {
       if (profile.role !== "user") {
         throw new Error("This account is not a user account.");
       }
-      window.location.href = withBasePath("/user/logged");
+      window.location.href = withBasePath("/");
     } catch (err: any) {
       setError(err.message ?? "Unable to sign in.");
     } finally {

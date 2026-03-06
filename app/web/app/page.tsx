@@ -1,6 +1,7 @@
 // This is the main homepage component, displaying creator listings and advertising spaces.
 import Link from "next/link";
 import { BottomAdCard, MainAdSpaces } from "../components/AdvertisingSpaces";
+import { CreatorFilterControls } from "../components/CreatorFilterControls";
 import { API_BASE } from "../lib/api";
 import { APP_BASE_PATH, withBasePath } from "../lib/paths";
 import fs from "fs/promises";
@@ -14,9 +15,7 @@ type Creator = {
   image_file?: string | null;
   age?: number | null;
   nationality?: string | null;
-  orientation?: string | null;
   height?: string | null;
-  bust_size?: string | null;
 };
 
 type PageRow = {
@@ -25,9 +24,7 @@ type PageRow = {
   name?: string;
   Age?: number | string;
   Nationality?: string;
-  Orientation?: string;
   Height?: string;
-  "Bust size"?: string;
 };
 
 type ImageRow = {
@@ -69,9 +66,7 @@ const loadLocalCreators = async (): Promise<Creator[]> => {
         image_file: image?.file ?? null,
         age: Number(creator.Age ?? 0) || null,
         nationality: creator.Nationality ?? null,
-        orientation: creator.Orientation ?? null,
         height: creator.Height ?? null,
-        bust_size: creator["Bust size"] ?? null,
       };
     });
   } catch {
@@ -91,19 +86,28 @@ const ageBand = (age?: number | null) => {
 // Helper function to normalize string values for comparison.
 const normalize = (value?: string | null) => (value ?? "").trim().toLowerCase();
 
+const normalizeName = (value?: string | null) => {
+  const raw = (value ?? "").trim();
+  if (!raw) return "Creator";
+  const stripped = raw
+    .replace(/^\s*(?:Escort|Girl|Miss)\s+/i, "")
+    .replace(/\s*-\s*.*$/, "")
+    .replace(/\s*[|,].*$/, "")
+    .trim();
+  return stripped || raw;
+};
+
 // Main page component.
 export default async function Page({
   searchParams,
 }: {
-  searchParams?: { page?: string; nationality?: string; orientation?: string; age?: string; height?: string; bust_size?: string };
+  searchParams?: { page?: string; nationality?: string; age?: string; height?: string };
 }) {
   // Parse and normalize search parameters for filtering.
   const page = Math.max(Number(searchParams?.page ?? "1") || 1, 1);
   const selectedNationality = normalize(searchParams?.nationality);
-  const selectedOrientation = normalize(searchParams?.orientation);
   const selectedAge = normalize(searchParams?.age);
   const selectedHeight = normalize(searchParams?.height);
-  const selectedBustSize = normalize(searchParams?.bust_size);
   let creators: Creator[] = [];
 
   try {
@@ -123,19 +127,15 @@ export default async function Page({
 
   // Prepare options for filter dropdowns.
   const nationalityOptions = Array.from(new Set(creators.map((c) => (c.nationality ?? "").trim()).filter(Boolean))).sort();
-  const orientationOptions = Array.from(new Set(creators.map((c) => (c.orientation ?? "").trim()).filter(Boolean))).sort();
   const heightOptions = Array.from(new Set(creators.map((c) => (c.height ?? "").trim()).filter(Boolean))).sort();
-  const bustSizeOptions = Array.from(new Set(creators.map((c) => (c.bust_size ?? "").trim()).filter(Boolean))).sort();
   const ageOptions = ["18-24", "25-29", "30-34", "35+"];
 
   // Apply filters to the creators list.
-  const hasActiveFilters = Boolean(selectedNationality || selectedOrientation || selectedAge || selectedHeight || selectedBustSize);
+  const hasActiveFilters = Boolean(selectedNationality || selectedAge || selectedHeight);
   const filteredCreators = creators.filter((creator) => {
     if (selectedNationality && normalize(creator.nationality) !== selectedNationality) return false;
-    if (selectedOrientation && normalize(creator.orientation) !== selectedOrientation) return false;
     if (selectedAge && ageBand(creator.age).toLowerCase() !== selectedAge) return false;
     if (selectedHeight && normalize(creator.height) !== selectedHeight) return false;
-    if (selectedBustSize && normalize(creator.bust_size) !== selectedBustSize) return false;
     return true;
   });
 
@@ -155,10 +155,8 @@ export default async function Page({
     const params = new URLSearchParams();
     params.set("page", String(targetPage));
     if (selectedNationality) params.set("nationality", selectedNationality);
-    if (selectedOrientation) params.set("orientation", selectedOrientation);
     if (selectedAge) params.set("age", selectedAge);
     if (selectedHeight) params.set("height", selectedHeight);
-    if (selectedBustSize) params.set("bust_size", selectedBustSize);
     return `/?${params.toString()}`;
   };
 
@@ -170,64 +168,26 @@ export default async function Page({
       </section>
 
       <section className="space-y-6">
-        {/* Creator filter dropdowns */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-          <select className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-xs tracking-[0.18em] text-brand-muted" defaultValue={selectedNationality || ""} name="nationality" form="creator-filter-form">
-            <option value="">ALL NATIONALITIES</option>
-            {nationalityOptions.map((option) => (
-              <option key={option} value={option.toLowerCase()}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <select className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-xs tracking-[0.18em] text-brand-muted" defaultValue={selectedOrientation || ""} name="orientation" form="creator-filter-form">
-            <option value="">ALL ORIENTATIONS</option>
-            {orientationOptions.map((option) => (
-              <option key={option} value={option.toLowerCase()}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <select className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-xs tracking-[0.18em] text-brand-muted" defaultValue={selectedAge || ""} name="age" form="creator-filter-form">
-            <option value="">ALL AGES</option>
-            {ageOptions.map((option) => (
-              <option key={option} value={option.toLowerCase()}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <select className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-xs tracking-[0.18em] text-brand-muted" defaultValue={selectedHeight || ""} name="height" form="creator-filter-form">
-            <option value="">ALL HEIGHTS</option>
-            {heightOptions.map((option) => (
-              <option key={option} value={option.toLowerCase()}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <select className="rounded-full border border-brand-line bg-brand-bg/70 px-4 py-2 text-xs tracking-[0.18em] text-brand-muted" defaultValue={selectedBustSize || ""} name="bust_size" form="creator-filter-form">
-            <option value="">ALL BUST SIZES</option>
-            {bustSizeOptions.map((option) => (
-              <option key={option} value={option.toLowerCase()}>
-                {option}
-              </option>
-            ))}
-          </select>
+        <div className="space-y-3">
+          <h2 className="font-display text-3xl md:text-4xl">Title Goes Here</h2>
+          <p className="max-w-2xl text-sm text-brand-muted">Some Text About Site Goes Here</p>
         </div>
 
-        {/* Filter action buttons */}
-        <form id="creator-filter-form" action={withBasePath("/")} className="flex gap-3">
-          <button className="btn btn-outline py-2" type="submit">
-            APPLY FILTERS
-          </button>
-          <Link className="btn btn-ghost py-2" href="/">
-            CLEAR
-          </Link>
-        </form>
+        {/* Creator filter dropdowns */}
+        <CreatorFilterControls
+          selectedNationality={selectedNationality}
+          selectedAge={selectedAge}
+          selectedHeight={selectedHeight}
+          nationalityOptions={nationalityOptions}
+          ageOptions={ageOptions}
+          heightOptions={heightOptions}
+          className="md:grid-cols-4"
+        />
 
         {/* Creator listing header and pagination */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="mt-3 font-display text-3xl md:text-4xl">BALI GIRLS</h2>
+            <h2 className="mt-3 font-display text-3xl md:text-4xl">FREE BALI GIRLS</h2>
             {hasActiveFilters ? (
               <p className="mt-3 text-sm text-brand-muted">Matched creators: {activeCreators.length}.</p>
             ) : null}
@@ -270,7 +230,7 @@ export default async function Page({
               );
             }
 
-            const displayName = creator.model_name || creator.username || "Creator";
+            const displayName = normalizeName(creator.model_name || creator.username || "Creator");
             const imageUrl = toImageUrl(creator.image_file);
             return (
               // Creator card link

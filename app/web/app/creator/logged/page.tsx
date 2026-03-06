@@ -13,15 +13,13 @@ type CreatorProfile = {
   last_seen: string;
   notes: string;
   model_name: string;
+  is_active: boolean;
   gender: "female" | "male" | "transgender";
   age: number;
   location: string;
   eyes: string;
   hair_color: string;
   hair_length: string;
-  pubic_hair: string;
-  bust_size: string;
-  bust_type: string;
   travel: string;
   weight: string;
   height: string;
@@ -118,23 +116,20 @@ export default function CreatorPanel() {
     setError(null);
     setMessage(null);
     try {
-      const payload = {
+  const payload = {
         title: profile.title,
         url: profile.url,
         tempPassword: profile.temp_password ?? "",
         lastSeen: profile.last_seen ?? "",
         notes: profile.notes ?? "",
         modelName: creatorName,
-        gender: profile.gender,
-        age: Number(profile.age),
+    gender: profile.gender,
+    age: Number(profile.age),
         location: profile.location ?? "",
-        eyes: profile.eyes ?? "",
-        hairColor: profile.hair_color ?? "",
-        hairLength: profile.hair_length ?? "",
-        pubicHair: profile.pubic_hair ?? "",
-        bustSize: profile.bust_size ?? "",
-        bustType: profile.bust_type ?? "",
-        travel: profile.travel ?? "",
+    eyes: profile.eyes ?? "",
+    hairColor: profile.hair_color ?? "",
+    hairLength: profile.hair_length ?? "",
+    travel: profile.travel ?? "",
         weight: profile.weight ?? "",
         height: profile.height ?? "",
         ethnicity: profile.ethnicity ?? "",
@@ -148,10 +143,11 @@ export default function CreatorPanel() {
         smoker: profile.smoker,
         tattoo: profile.tattoo,
         piercing: profile.piercing,
-        services: profile.services,
-        meetingWith: profile.meeting_with,
-        availableFor: profile.available_for,
-      };
+    services: profile.services,
+    meetingWith: profile.meeting_with,
+    availableFor: profile.available_for,
+    isActive: profile.is_active,
+  };
       await apiFetch("/me/creator-profile", { method: "PUT", body: JSON.stringify(payload) });
       setMessage("Creator profile updated.");
     } catch (err: any) {
@@ -259,6 +255,55 @@ export default function CreatorPanel() {
     }
   };
 
+  const toggleActive = async () => {
+    if (!profile) return;
+    const next = !profile.is_active;
+    setError(null);
+    setMessage(null);
+    setSavingProfile(true);
+    try {
+      const payload = {
+        title: profile.title,
+        url: profile.url,
+        tempPassword: profile.temp_password ?? "",
+        lastSeen: profile.last_seen ?? "",
+        notes: profile.notes ?? "",
+        modelName: profile.model_name ?? "",
+        gender: profile.gender,
+        age: Number(profile.age),
+        location: profile.location ?? "",
+        eyes: profile.eyes ?? "",
+        hairColor: profile.hair_color ?? "",
+        hairLength: profile.hair_length ?? "",
+        travel: profile.travel ?? "",
+        weight: profile.weight ?? "",
+        height: profile.height ?? "",
+        ethnicity: profile.ethnicity ?? "",
+        nationality: profile.nationality,
+        languages: profile.languages ?? "",
+        phoneNumber: profile.phone_number ?? "",
+        cellPhone: profile.cell_phone ?? "",
+        country: profile.country,
+        city: profile.city,
+        orientation: profile.orientation,
+        smoker: profile.smoker,
+        tattoo: profile.tattoo,
+        piercing: profile.piercing,
+        services: profile.services,
+        meetingWith: profile.meeting_with,
+        availableFor: profile.available_for,
+        isActive: next,
+      };
+      await apiFetch("/me/creator-profile", { method: "PUT", body: JSON.stringify(payload) });
+      setProfile((prev) => (prev ? { ...prev, is_active: next } : prev));
+      setMessage(next ? "Profile is now active." : "Profile is now inactive.");
+    } catch (err: any) {
+      setError(err.message ?? "Profile status update failed");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   if (!profile) return <div className="text-sm text-brand-muted">Loading creator profile...</div>;
 
   return (
@@ -271,18 +316,25 @@ export default function CreatorPanel() {
             Username: {profile.username} | Temp password: {profile.temp_password || "not set"}
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link className="btn btn-outline" href="/">
-            BACK HOME
-          </Link>
-          <button onClick={logout} className="btn btn-outline">
-            LOGOUT
-          </button>
+          <div className="flex gap-3">
+            <Link className="btn btn-outline" href="/">
+              BACK HOME
+            </Link>
+            <button
+              onClick={toggleActive}
+              className="btn btn-outline"
+              disabled={savingProfile}
+            >
+              {profile.is_active ? "DEACTIVATE" : "ACTIVATE"}
+            </button>
+            <button onClick={logout} className="btn btn-outline">
+              LOGOUT
+            </button>
         </div>
       </div>
 
       <section className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7">
-        <div className="text-xs tracking-luxe text-brand-muted">PROFILE (ALIGNED TO page_data.json)</div>
+        <div className="text-xs tracking-luxe text-brand-muted">PROFILE</div>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           <Field label="NAME">
             <input
@@ -347,15 +399,6 @@ export default function CreatorPanel() {
           </Field>
           <Field label="HAIR LENGTH">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.hair_length ?? ""} onChange={(e) => updateProfile("hair_length", e.target.value)} />
-          </Field>
-          <Field label="PUBIC HAIR">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.pubic_hair ?? ""} onChange={(e) => updateProfile("pubic_hair", e.target.value)} />
-          </Field>
-          <Field label="BUST SIZE">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.bust_size ?? ""} onChange={(e) => updateProfile("bust_size", e.target.value)} />
-          </Field>
-          <Field label="BUST TYPE">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.bust_type ?? ""} onChange={(e) => updateProfile("bust_type", e.target.value)} />
           </Field>
           <Field label="HEIGHT">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.height ?? ""} onChange={(e) => updateProfile("height", e.target.value)} />

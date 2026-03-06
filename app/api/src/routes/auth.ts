@@ -18,7 +18,7 @@ export const authRouter = Router();
 const FALLBACK_PASSWORDS: Record<string, string> = {
   admin: "admin123",
   user: "teameditor123",
-  creator: "teameditor123",
+  creator: "secretcreator123",
 };
 
 // Zod schema for validating login credentials.
@@ -282,8 +282,9 @@ authRouter.post("/forgot-password/verify", rateLimit, async (req, res) => {
       SELECT a.id::text AS id,
              a.role,
              a.username,
-             COALESCE(to_jsonb(a)->>'email', '') AS email,
-             COALESCE(to_jsonb(a)->>'phone', '') AS phone,
+             COALESCE(a.email, '') AS email,
+             COALESCE(a.phone, '') AS phone,
+             COALESCE(a.whatsapp, '') AS whatsapp,
              COALESCE(a.password, '') AS password,
              COALESCE(u.full_name, '') AS full_name
         FROM app_accounts a
@@ -300,7 +301,7 @@ authRouter.post("/forgot-password/verify", rateLimit, async (req, res) => {
       const score = countMatches(input, {
         names: [normalizeText(row.full_name), normalizeText(row.username)],
         emails: [normalizeText(row.email)],
-        phones: [normalizePhone(row.phone)],
+        phones: [normalizePhone(row.phone), normalizePhone(row.whatsapp)],
         oldPasswords: [String(row.password), fallback],
       });
       if (score >= 2) {
@@ -389,7 +390,7 @@ authRouter.post("/refresh", rateLimit, async (req, res) => {
 
 // Zod schema for user registration.
 const UserRegisterSchema = z.object({
-  username: z.string().min(3).max(80).regex(/^[a-zA-Z0-9_]+$/, "Username: letters, numbers, underscores only"),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(6).max(200),
   fullName: z.string().min(1).max(120),
   gender: z.enum(["female", "male", "transgender"]),
@@ -398,6 +399,9 @@ const UserRegisterSchema = z.object({
   city: z.string().min(1).max(80),
   preferredContact: z.enum(["whatsapp", "telegram", "wechat"]),
   relationshipStatus: z.enum(["single", "married", "other"]),
+  phoneNumber: z.string().trim().optional().default(""),
+  whatsapp: z.string().trim().optional().default(""),
+  telegramId: z.string().trim().optional().default(""),
 });
 
 // POST route to register a new user account.
@@ -408,14 +412,27 @@ authRouter.post("/register", rateLimit, async (req, res) => {
   }
 
   const pool = getPool();
-  const { username, password, fullName, gender, ageGroup, nationality, city, preferredContact, relationshipStatus } =
-    parsed.data;
+  const {
+    email,
+    password,
+    fullName,
+    gender,
+    ageGroup,
+    nationality,
+    city,
+    preferredContact,
+    relationshipStatus,
+    phoneNumber,
+    whatsapp,
+    telegramId,
+  } = parsed.data;
 
   try {
-    // Check username uniqueness.
-    const existing = await pool.query(`SELECT id FROM app_accounts WHERE LOWER(username) = $1 LIMIT 1`, [
-      username.toLowerCase(),
-    ]);
+    // Check email/username uniqueness.
+    const existing = await pool.query(
+      `SELECT id FROM app_accounts WHERE LOWER(email) = $1 OR LOWER(username) = $1 LIMIT 1`,
+      [email]
+    );
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: "username_taken" });
     }
@@ -425,18 +442,43 @@ authRouter.post("/register", rateLimit, async (req, res) => {
 
     // Insert app_accounts row with explicit id.
     await pool.query(
-      `INSERT INTO app_accounts (id, role, username, password) VALUES ($1::uuid, 'user', $2, $3)`,
-      [accountId, username, password]
+      `INSERT INTO app_accounts (id, role, username, password, email, phone, whatsapp, telegram_id)
+       VALUES ($1::uuid, 'user', $2, $3, $4, $5, $6, $7)`,
+      [accountId, email, password, email, phoneNumber || null, whatsapp || null, telegramId || null]
     );
 
     // Insert user_profiles row.
     await pool.query(
-      `INSERT INTO user_profiles (account_id, full_name, gender, age_group, nationality, city, preferred_contact, relationship_status)
-       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)`,
-      [accountId, fullName, gender, ageGroup, nationality, city, preferredContact, relationshipStatus]
+      `INSERT INTO user_profiles (
+         account_id,
+         full_name,
+         gender,
+         age_group,
+         nationality,
+         city,
+         preferred_contact,
+         relationship_status,
+         phone,
+         whatsapp,
+         telegram_id
+       )
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        accountId,
+        fullName,
+        gender,
+        ageGroup,
+        nationality,
+        city,
+        preferredContact,
+        relationshipStatus,
+        phoneNumber || null,
+        whatsapp || null,
+        telegramId || null,
+      ]
     );
 
-    const payload = { sub: accountId, role: "user", username };
+    const payload = { sub: accountId, role: "user", username: email };
     const accessToken = await signAccessToken(payload);
     const refreshToken = await signRefreshToken(payload);
     return res.status(201).json({ accessToken, refreshToken });

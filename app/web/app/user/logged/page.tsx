@@ -113,13 +113,15 @@ export default function UserDashboard() {
       {/* Header section with title and navigation buttons. */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="text-xs tracking-luxe text-brand-muted">USER</div>
-          <h1 className="mt-2 font-display text-3xl">Profile CRUD</h1>
+          <h1 className="mt-2 font-display text-3xl">USER INFORMATION</h1>
           <p className="mt-2 text-sm text-brand-muted">{me ? `Signed in as ${me.username}` : "Loading..."}</p>
         </div>
         <div className="flex gap-3">
           <Link className="btn btn-outline" href="/">
             BACK HOME
+          </Link>
+          <Link className="btn btn-outline" href="/user/logged">
+            EDIT PROFILE
           </Link>
           <button onClick={logout} className="btn btn-outline">
             LOGOUT
