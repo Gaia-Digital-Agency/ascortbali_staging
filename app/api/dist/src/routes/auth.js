@@ -5,11 +5,12 @@ import { getPool } from "../lib/pg.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { signAccessToken, signPasswordResetToken, signRefreshToken, verifyJwt, verifyPasswordResetToken, } from "../lib/jwt.js";
 import { requireAuth } from "../middleware/auth.js";
+import { randomUUID } from "crypto";
 export const authRouter = Router();
 const FALLBACK_PASSWORDS = {
     admin: "admin123",
-    user: "user123",
-    creator: "creator123",
+    user: "teameditor123",
+    creator: "teameditor123",
 };
 // Zod schema for validating login credentials.
 const LoginSchema = z.object({
@@ -325,6 +326,106 @@ authRouter.post("/refresh", rateLimit, async (req, res) => {
     }
     catch {
         return res.status(401).json({ error: "invalid_refresh" });
+    }
+});
+// Zod schema for user registration.
+const UserRegisterSchema = z.object({
+    username: z.string().min(3).max(80).regex(/^[a-zA-Z0-9_]+$/, "Username: letters, numbers, underscores only"),
+    password: z.string().min(6).max(200),
+    fullName: z.string().min(1).max(120),
+    gender: z.enum(["female", "male", "transgender"]),
+    ageGroup: z.enum(["18-24", "25-34", "35-44", "45-54", "55-64", "65+"]),
+    nationality: z.string().min(1).max(80),
+    city: z.string().min(1).max(80),
+    preferredContact: z.enum(["whatsapp", "telegram", "wechat"]),
+    relationshipStatus: z.enum(["single", "married", "other"]),
+});
+// POST route to register a new user account.
+authRouter.post("/register", rateLimit, async (req, res) => {
+    const parsed = UserRegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
+    }
+    const pool = getPool();
+    const { username, password, fullName, gender, ageGroup, nationality, city, preferredContact, relationshipStatus } = parsed.data;
+    try {
+        // Check username uniqueness.
+        const existing = await pool.query(`SELECT id FROM app_accounts WHERE LOWER(username) = $1 LIMIT 1`, [
+            username.toLowerCase(),
+        ]);
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ error: "username_taken" });
+        }
+        // Pre-generate account UUID so we don't need RETURNING (Prisma pool uses $executeRawUnsafe for INSERTs).
+        const accountId = randomUUID();
+        // Insert app_accounts row with explicit id.
+        await pool.query(`INSERT INTO app_accounts (id, role, username, password) VALUES ($1::uuid, 'user', $2, $3)`, [accountId, username, password]);
+        // Insert user_profiles row.
+        await pool.query(`INSERT INTO user_profiles (account_id, full_name, gender, age_group, nationality, city, preferred_contact, relationship_status)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)`, [accountId, fullName, gender, ageGroup, nationality, city, preferredContact, relationshipStatus]);
+        const payload = { sub: accountId, role: "user", username };
+        const accessToken = await signAccessToken(payload);
+        const refreshToken = await signRefreshToken(payload);
+        return res.status(201).json({ accessToken, refreshToken });
+    }
+    catch {
+        return res.status(500).json({ error: "registration_failed" });
+    }
+});
+// Zod schema for creator registration.
+const CreatorRegisterSchema = z.object({
+    username: z.string().min(3).max(80).regex(/^[a-zA-Z0-9_]+$/, "Username: letters, numbers, underscores only"),
+    password: z.string().min(6).max(200),
+    modelName: z.string().min(1).max(100),
+    gender: z.string().max(20).optional().default(""),
+    age: z.number().int().min(18).max(99).optional(),
+    nationality: z.string().max(50).optional().default(""),
+    city: z.string().max(50).optional().default(""),
+    phoneNumber: z.string().max(50).optional().default(""),
+    telegramId: z.string().max(100).optional().default(""),
+});
+// POST route to register a new creator account.
+authRouter.post("/register/creator", rateLimit, async (req, res) => {
+    const parsed = CreatorRegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
+    }
+    const pool = getPool();
+    const { username, password, modelName, gender, age, nationality, city, phoneNumber, telegramId } = parsed.data;
+    try {
+        // Check username uniqueness.
+        const existing = await pool.query(`SELECT uuid FROM providers WHERE LOWER(username) = $1 LIMIT 1`, [
+            username.toLowerCase(),
+        ]);
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ error: "username_taken" });
+        }
+        // Pre-generate UUIDs so we don't need RETURNING (Prisma pool uses $executeRawUnsafe for INSERTs).
+        const creatorId = randomUUID();
+        const providerId = "P" + creatorId.replace(/-/g, "").slice(0, 8).toUpperCase();
+        const url = `/creator/preview/${username.toLowerCase()}`;
+        await pool.query(`INSERT INTO providers (uuid, provider_id, username, password, model_name, gender, age, nationality, city, phone_number, telegram_id, url)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [
+            creatorId,
+            providerId,
+            username,
+            password,
+            modelName,
+            gender || null,
+            age || null,
+            nationality || null,
+            city || null,
+            phoneNumber || null,
+            telegramId || null,
+            url,
+        ]);
+        const payload = { sub: creatorId, role: "creator", username };
+        const accessToken = await signAccessToken(payload);
+        const refreshToken = await signRefreshToken(payload);
+        return res.status(201).json({ accessToken, refreshToken });
+    }
+    catch {
+        return res.status(500).json({ error: "registration_failed" });
     }
 });
 // POST route for user logout (currently a no-op).

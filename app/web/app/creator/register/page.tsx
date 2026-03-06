@@ -1,4 +1,4 @@
-// This module defines the User Registration Page component.
+// This module defines the Creator Registration Page component.
 "use client";
 
 import { useState } from "react";
@@ -26,25 +26,38 @@ const NATIONALITIES = [
   "Uruguayan", "Uzbek", "Venezuelan", "Vietnamese", "Yemeni", "Zimbabwean",
 ];
 
-export default function UserRegisterPage() {
+const AGES = Array.from({ length: 53 }, (_, i) => 18 + i); // 18–70
+
+export default function CreatorRegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [gender, setGender] = useState<"female" | "male" | "transgender">("male");
-  const [ageGroup, setAgeGroup] = useState<"18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+">("25-34");
+  const [modelName, setModelName] = useState("");
+  const [gender, setGender] = useState("");
+  const [age, setAge] = useState("");
   const [nationality, setNationality] = useState("");
   const [city, setCity] = useState("");
-  const [preferredContact, setPreferredContact] = useState<"whatsapp" | "telegram" | "wechat">("whatsapp");
-  const [relationshipStatus, setRelationshipStatus] = useState<"single" | "married" | "other">("single");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [telegramId, setTelegramId] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Terms confirmation state.
+  const [policyConfirmed, setPolicyConfirmed] = useState(false);
+  const [termsConfirmed, setTermsConfirmed] = useState(false);
+  const [privacyConfirmed, setPrivacyConfirmed] = useState(false);
+  const [noNudeConfirmed, setNoNudeConfirmed] = useState(false);
+  const hasAllConfirmations = policyConfirmed && termsConfirmed && privacyConfirmed && noNudeConfirmed;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    if (!hasAllConfirmations) {
+      setError("Please confirm all agreements before registering.");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -56,19 +69,19 @@ export default function UserRegisterPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await fetch(`${API_BASE}/auth/register/creator`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           username: username.trim(),
           password,
-          fullName: fullName.trim(),
+          modelName: modelName.trim(),
           gender,
-          ageGroup,
-          nationality: nationality.trim(),
+          age: parseInt(age, 10),
+          nationality,
           city: city.trim(),
-          preferredContact,
-          relationshipStatus,
+          phoneNumber: phoneNumber.trim(),
+          telegramId: telegramId.trim() || undefined,
         }),
       });
       const json = await res.json();
@@ -77,7 +90,7 @@ export default function UserRegisterPage() {
         throw new Error(json?.error ?? "Registration failed.");
       }
       setTokens({ accessToken: json.accessToken, refreshToken: json.refreshToken });
-      window.location.href = withBasePath("/user/logged");
+      window.location.href = withBasePath("/creator/logged");
     } catch (err: any) {
       setError(err.message ?? "Unable to register.");
     } finally {
@@ -85,21 +98,25 @@ export default function UserRegisterPage() {
     }
   };
 
+  const sel = "mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60";
+  const inp = "mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60";
+
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div className="text-center">
-        <div className="text-xs tracking-luxe text-brand-muted">USER ACCESS</div>
-        <h1 className="mt-2 font-display text-3xl">Create Account</h1>
+        <div className="text-xs tracking-luxe text-brand-muted">CREATOR</div>
+        <h1 className="mt-2 font-display text-3xl">Create Creator Account</h1>
       </div>
 
       <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7 shadow-luxe">
         <form onSubmit={onSubmit} className="space-y-4">
+
           {/* Account credentials */}
           <div>
             <label className="text-xs tracking-[0.22em] text-brand-muted">USERNAME</label>
             <input
               required
-              className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+              className={inp}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="your_username"
@@ -134,7 +151,7 @@ export default function UserRegisterPage() {
             <input
               required
               type={showPassword ? "text" : "password"}
-              className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+              className={inp}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repeat password"
@@ -143,15 +160,15 @@ export default function UserRegisterPage() {
 
           <hr className="border-brand-line" />
 
-          {/* Profile fields */}
+          {/* Creator profile fields */}
           <div>
-            <label className="text-xs tracking-[0.22em] text-brand-muted">FULL NAME</label>
+            <label className="text-xs tracking-[0.22em] text-brand-muted">DISPLAY NAME</label>
             <input
               required
-              className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Your full name"
+              className={inp}
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              placeholder="Your display name"
             />
           </div>
 
@@ -160,30 +177,30 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">GENDER</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+                className={sel}
                 value={gender}
-                onChange={(e) => setGender(e.target.value as any)}
+                onChange={(e) => setGender(e.target.value)}
               >
-                <option value="male">Male</option>
+                <option value="" disabled>Select...</option>
                 <option value="female">Female</option>
+                <option value="male">Male</option>
                 <option value="transgender">Transgender</option>
+                <option value="undisclosed">Undisclosed</option>
               </select>
             </div>
 
             <div>
-              <label className="text-xs tracking-[0.22em] text-brand-muted">AGE GROUP</label>
+              <label className="text-xs tracking-[0.22em] text-brand-muted">AGE</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
-                value={ageGroup}
-                onChange={(e) => setAgeGroup(e.target.value as any)}
+                className={sel}
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
               >
-                <option value="18-24">18–24</option>
-                <option value="25-34">25–34</option>
-                <option value="35-44">35–44</option>
-                <option value="45-54">45–54</option>
-                <option value="55-64">55–64</option>
-                <option value="65+">65+</option>
+                <option value="" disabled>Select...</option>
+                {AGES.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -193,7 +210,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">NATIONALITY</label>
               <select
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+                className={sel}
                 value={nationality}
                 onChange={(e) => setNationality(e.target.value)}
               >
@@ -208,7 +225,7 @@ export default function UserRegisterPage() {
               <label className="text-xs tracking-[0.22em] text-brand-muted">CITY</label>
               <input
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
+                className={inp}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="e.g. Bali"
@@ -218,43 +235,83 @@ export default function UserRegisterPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs tracking-[0.22em] text-brand-muted">PREFERRED CONTACT</label>
-              <select
+              <label className="text-xs tracking-[0.22em] text-brand-muted">PHONE / WHATSAPP</label>
+              <input
                 required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
-                value={preferredContact}
-                onChange={(e) => setPreferredContact(e.target.value as any)}
-              >
-                <option value="whatsapp">WhatsApp</option>
-                <option value="telegram">Telegram</option>
-                <option value="wechat">WeChat</option>
-              </select>
+                className={inp}
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+62..."
+              />
             </div>
 
             <div>
-              <label className="text-xs tracking-[0.22em] text-brand-muted">RELATIONSHIP STATUS</label>
-              <select
-                required
-                className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
-                value={relationshipStatus}
-                onChange={(e) => setRelationshipStatus(e.target.value as any)}
-              >
-                <option value="single">Single</option>
-                <option value="married">Married</option>
-                <option value="other">Other</option>
-              </select>
+              <label className="text-xs tracking-[0.22em] text-brand-muted">TELEGRAM ID <span className="normal-case text-brand-muted/60">(optional)</span></label>
+              <input
+                className={inp}
+                value={telegramId}
+                onChange={(e) => setTelegramId(e.target.value)}
+                placeholder="@username"
+              />
             </div>
+          </div>
+
+          <hr className="border-brand-line" />
+
+          {/* Agreements */}
+          <div className="space-y-3 text-sm">
+            <div className="text-xs tracking-[0.18em] text-brand-muted">AGREEMENTS</div>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={policyConfirmed}
+                onChange={(e) => setPolicyConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-brand-line"
+              />
+              <span className="text-brand-muted">I confirm my registration/profile details follow platform policy.</span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsConfirmed}
+                onChange={(e) => setTermsConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-brand-line"
+              />
+              <span className="text-brand-muted">I agree to the Terms of Use.</span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={privacyConfirmed}
+                onChange={(e) => setPrivacyConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-brand-line"
+              />
+              <span className="text-brand-muted">I agree to the Privacy Statement.</span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={noNudeConfirmed}
+                onChange={(e) => setNoNudeConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-brand-line"
+              />
+              <span className="text-brand-muted">I confirm I will not upload nude photographs.</span>
+            </label>
           </div>
 
           {error ? <div className="text-xs text-red-400">{error}</div> : null}
 
-          <button disabled={loading} className="btn btn-primary btn-block py-3">
-            {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
+          <button disabled={loading || !hasAllConfirmations} className="btn btn-primary btn-block py-3">
+            {loading ? "CREATING ACCOUNT..." : "CREATE CREATOR ACCOUNT"}
           </button>
 
           <div className="text-center text-xs text-brand-muted">
             Already have an account?{" "}
-            <Link href={withBasePath("/user")} className="text-brand-gold hover:underline">
+            <Link href={withBasePath("/creator")} className="text-brand-gold hover:underline">
               Sign In
             </Link>
           </div>

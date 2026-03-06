@@ -59,15 +59,20 @@ function normalizeAdSpace(ad: AdSpace): AdSpace {
 }
 
 // Custom hook to fetch and manage advertising spaces.
+// Starts as null so no image is rendered until the fetch resolves, preventing
+// a flash of stale fallback images on page refresh.
 export function useAdSpaces() {
-  const [ads, setAds] = useState<AdSpace[]>(fallbackAds);
+  const [ads, setAds] = useState<AdSpace[] | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/ads`, { signal: controller.signal });
-        if (!res.ok) return;
+        if (!res.ok) {
+          setAds(fallbackAds);
+          return;
+        }
         const data = (await res.json()) as AdSpace[];
         if (Array.isArray(data) && data.length) {
           const map = new Map(data.map((item) => [item.slot, normalizeAdSpace(item)]));
@@ -87,9 +92,12 @@ export function useAdSpaces() {
             mergeSlot("home-3", fallbackAds[2]),
             mergeSlot("bottom", fallbackAds[3]),
           ]);
+        } else {
+          setAds(fallbackAds);
         }
       } catch {
         if (controller.signal.aborted) return;
+        setAds(fallbackAds);
       }
     })();
     return () => controller.abort();
@@ -98,9 +106,28 @@ export function useAdSpaces() {
   return ads;
 }
 
+// Skeleton placeholder shown while ad data is loading.
+function AdSkeleton() {
+  return (
+    <div className="aspect-[9/16] overflow-hidden rounded-3xl border border-brand-line bg-brand-surface/50 shadow-luxe" />
+  );
+}
+
 // Component to display the main advertising spaces on the homepage.
 export function MainAdSpaces() {
   const ads = useAdSpaces();
+
+  // While fetching, render blank skeleton cards so no stale image flashes.
+  if (ads === null) {
+    return (
+      <div className="mx-auto grid max-w-xs gap-5 sm:max-w-none sm:grid-cols-2 md:grid-cols-3">
+        <AdSkeleton />
+        <AdSkeleton />
+        <AdSkeleton />
+      </div>
+    );
+  }
+
   const homeAds = ads.filter((ad) => ad.slot !== "bottom");
 
   return (
@@ -139,7 +166,7 @@ export function MainAdSpaces() {
 // Component to display the bottom advertising card.
 export function BottomAdCard() {
   const ads = useAdSpaces();
-  const bottom = ads.find((ad) => ad.slot === "bottom");
+  const bottom = ads?.find((ad) => ad.slot === "bottom");
 
   return (
     <div className="rounded-3xl border border-brand-gold/60 bg-brand-surface/40 p-8 text-center font-display text-2xl">

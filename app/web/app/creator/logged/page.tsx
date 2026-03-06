@@ -266,7 +266,7 @@ export default function CreatorPanel() {
       <div className="flex items-center justify-between">
         <div>
           <div className="text-xs tracking-luxe text-brand-muted">CREATOR</div>
-          <h1 className="mt-2 font-display text-3xl">Creator CRUD</h1>
+          <h1 className="mt-2 font-display text-3xl">Creator Profile Page</h1>
           <p className="mt-2 text-sm text-brand-muted">
             Username: {profile.username} | Temp password: {profile.temp_password || "not set"}
           </p>

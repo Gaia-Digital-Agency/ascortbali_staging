@@ -482,7 +482,7 @@ meRouter.get("/creator-images", requireAuth, requireRole(["creator"]), async (re
 });
 // Zod schema for validating creator image data.
 const CreatorImageSchema = z.object({
-    sequenceNumber: z.coerce.number().int().min(1).max(7),
+    sequenceNumber: z.coerce.number().int().min(1).max(20),
     imageFile: z.string().min(1),
 });
 // Route to create a new image for the authenticated creator.

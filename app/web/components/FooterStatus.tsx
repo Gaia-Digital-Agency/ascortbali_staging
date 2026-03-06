@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { API_BASE } from "../lib/api";
+import { withBasePath } from "../lib/paths";
 
 // Type definition for data fetched for the footer status.
 type FooterStatusData = {
@@ -43,7 +44,12 @@ export function FooterStatus() {
         <div>DATA PRIVACY SECURED</div>
         <div>NUMBER OF VISITORS: {status?.visitorCount ?? 12876}</div>
         <div>COPYRIGHT (C) 2026</div>
-        <div>Your visit to this site is subject to this website terms and condition.</div>
+        <a
+          href={withBasePath("/terms")}
+          className="block underline-offset-2 hover:text-brand-gold hover:underline"
+        >
+          Your visit to this site is subject to our Terms &amp; Conditions.
+        </a>
       </div>
       {/* Dynamic status information like visitor count, date, location, and IP. */}
       <div className="space-y-2 text-center md:text-right">

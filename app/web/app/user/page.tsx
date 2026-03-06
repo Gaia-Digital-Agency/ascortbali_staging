@@ -186,8 +186,12 @@ export default function UserLoginPage() {
             FORGET PASSWORD
           </button>
 
-          {/* Hint for login credentials. */}
-          <div className="pt-2 text-center text-xs tracking-[0.18em] text-brand-muted">Use PostgreSQL seeded user credentials.</div>
+          <div className="text-center text-xs text-brand-muted">
+            No account?{" "}
+            <a href={withBasePath("/user/register")} className="text-brand-gold hover:underline">
+              Register here
+            </a>
+          </div>
         </form>
 
         {showForgot ? (

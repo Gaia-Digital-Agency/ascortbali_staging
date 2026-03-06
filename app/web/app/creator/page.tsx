@@ -205,6 +205,10 @@ export default function CreatorLoginPage() {
           >
             FORGET PASSWORD
           </button>
+
+          <a href={withBasePath("/creator/register")} className="btn btn-outline btn-block py-3 text-center">
+            REGISTER AS CREATOR
+          </a>
         </form>
 
         {showForgot ? (

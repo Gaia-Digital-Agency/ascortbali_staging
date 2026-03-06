@@ -7,6 +7,8 @@ import { withBasePath } from "../../../lib/paths";
 
 type Me = { username: string; role: string };
 type AdminStats = { creatorCount: number; userCount: number };
+type UserAccount = { id: string; username: string; password: string; created_at: string; updated_at: string };
+type CreatorAccount = { id: string; username: string; password: string | null; temp_password: string | null; last_seen: string | null; created_at: string; updated_at: string };
 type AdSpace = {
   slot: "home-1" | "home-2" | "home-3" | "bottom";
   image: string | null;
@@ -56,10 +58,24 @@ function normalizeAdSpace(ad: AdSpace): AdSpace {
   return { ...ad, image: normalizeAdImage(ad.image) };
 }
 
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
+
+type EditUserState = { username: string; password: string };
+type EditCreatorState = { username: string; password: string; tempPassword: string };
+
 export default function AdminDashboard() {
   const [me, setMe] = useState<Me | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [ads, setAds] = useState<AdSpace[]>(defaultAds);
+  const [users, setUsers] = useState<UserAccount[]>([]);
+  const [creators, setCreators] = useState<CreatorAccount[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [savingSlot, setSavingSlot] = useState<string | null>(null);
   const [pwCurrent, setPwCurrent] = useState("admin123");
@@ -68,6 +84,12 @@ export default function AdminDashboard() {
   const [pwMsg, setPwMsg] = useState<string | null>(null);
   const [showPwCurrent, setShowPwCurrent] = useState(false);
   const [showPwNew, setShowPwNew] = useState(false);
+
+  // Inline edit state: maps id → edit form values.
+  const [editingUser, setEditingUser] = useState<Record<string, EditUserState>>({});
+  const [editingCreator, setEditingCreator] = useState<Record<string, EditCreatorState>>({});
+  const [savingAccountId, setSavingAccountId] = useState<string | null>(null);
+  const [accountMsg, setAccountMsg] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -79,9 +101,15 @@ export default function AdminDashboard() {
           return;
         }
         setMe(profile);
-        const [statsData, adsData] = await Promise.all([apiFetch("/admin/stats"), apiFetch("/admin/ads")]);
+        const [statsData, adsData, accountsData] = await Promise.all([
+          apiFetch("/admin/stats"),
+          apiFetch("/admin/ads"),
+          apiFetch("/admin/accounts"),
+        ]);
         setStats(statsData);
         if (Array.isArray(adsData) && adsData.length) setAds(adsData.map(normalizeAdSpace));
+        if (accountsData?.users) setUsers(accountsData.users);
+        if (accountsData?.creators) setCreators(accountsData.creators);
       } catch {
         clearTokens();
         window.location.href = withBasePath("/admin");
@@ -152,6 +180,70 @@ export default function AdminDashboard() {
     } finally {
       setPwSaving(false);
     }
+  };
+
+  // ── User CRUD helpers ────────────────────────────────────────────────────
+  const startEditUser = (u: UserAccount) =>
+    setEditingUser((prev) => ({ ...prev, [u.id]: { username: u.username, password: u.password } }));
+  const cancelEditUser = (id: string) =>
+    setEditingUser((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  const saveUser = async (id: string) => {
+    const form = editingUser[id];
+    if (!form) return;
+    setSavingAccountId(id); setError(null); setAccountMsg(null);
+    try {
+      await apiFetch(`/admin/accounts/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ username: form.username, password: form.password }),
+      });
+      setUsers((prev) => prev.map((u) => u.id === id ? { ...u, username: form.username, password: form.password } : u));
+      cancelEditUser(id);
+      setAccountMsg("User updated.");
+    } catch (err: any) { setError(err.message ?? "User update failed"); }
+    finally { setSavingAccountId(null); }
+  };
+  const deleteUser = async (id: string) => {
+    if (!confirm("Delete this user? This cannot be undone.")) return;
+    setSavingAccountId(id); setError(null); setAccountMsg(null);
+    try {
+      await apiFetch(`/admin/accounts/users/${id}`, { method: "DELETE" });
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setStats((prev) => prev ? { ...prev, userCount: prev.userCount - 1 } : prev);
+      setAccountMsg("User deleted.");
+    } catch (err: any) { setError(err.message ?? "User delete failed"); }
+    finally { setSavingAccountId(null); }
+  };
+
+  // ── Creator CRUD helpers ──────────────────────────────────────────────────
+  const startEditCreator = (c: CreatorAccount) =>
+    setEditingCreator((prev) => ({ ...prev, [c.id]: { username: c.username, password: c.password ?? "", tempPassword: c.temp_password ?? "" } }));
+  const cancelEditCreator = (id: string) =>
+    setEditingCreator((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  const saveCreator = async (id: string) => {
+    const form = editingCreator[id];
+    if (!form) return;
+    setSavingAccountId(id); setError(null); setAccountMsg(null);
+    try {
+      await apiFetch(`/admin/accounts/creators/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ username: form.username, password: form.password, tempPassword: form.tempPassword || null }),
+      });
+      setCreators((prev) => prev.map((c) => c.id === id ? { ...c, username: form.username, password: form.password, temp_password: form.tempPassword || null } : c));
+      cancelEditCreator(id);
+      setAccountMsg("Creator updated.");
+    } catch (err: any) { setError(err.message ?? "Creator update failed"); }
+    finally { setSavingAccountId(null); }
+  };
+  const deleteCreator = async (id: string) => {
+    if (!confirm("Delete this creator? This cannot be undone.")) return;
+    setSavingAccountId(id); setError(null); setAccountMsg(null);
+    try {
+      await apiFetch(`/admin/accounts/creators/${id}`, { method: "DELETE" });
+      setCreators((prev) => prev.filter((c) => c.id !== id));
+      setStats((prev) => prev ? { ...prev, creatorCount: prev.creatorCount - 1 } : prev);
+      setAccountMsg("Creator deleted.");
+    } catch (err: any) { setError(err.message ?? "Creator delete failed"); }
+    finally { setSavingAccountId(null); }
   };
 
   return (
@@ -246,6 +338,146 @@ export default function AdminDashboard() {
         {pwMsg ? <div className="mt-4 text-xs text-emerald-400">{pwMsg}</div> : null}
       </div>
 
+      {/* Users CRUD */}
+      <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7 shadow-luxe">
+        <div className="text-xs tracking-[0.22em] text-brand-muted">REGISTERED USERS ({users.length})</div>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-line text-left text-xs tracking-[0.18em] text-brand-muted">
+                <th className="pb-3 pr-4 font-normal">USERNAME</th>
+                <th className="pb-3 pr-4 font-normal">PASSWORD</th>
+                <th className="pb-3 pr-4 font-normal">REGISTERED</th>
+                <th className="pb-3 font-normal">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length === 0 ? (
+                <tr><td colSpan={4} className="py-4 text-xs text-brand-muted">No users yet.</td></tr>
+              ) : users.map((u) => {
+                const editing = editingUser[u.id];
+                const busy = savingAccountId === u.id;
+                return editing ? (
+                  <tr key={u.id} className="border-b border-brand-line/40 bg-brand-surface2/20">
+                    <td className="py-2 pr-4">
+                      <input
+                        className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-1.5 font-mono text-xs outline-none focus:border-brand-gold/60"
+                        value={editing.username}
+                        onChange={(e) => setEditingUser((p) => ({ ...p, [u.id]: { ...p[u.id], username: e.target.value } }))}
+                      />
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input
+                        className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-1.5 font-mono text-xs outline-none focus:border-brand-gold/60"
+                        value={editing.password}
+                        onChange={(e) => setEditingUser((p) => ({ ...p, [u.id]: { ...p[u.id], password: e.target.value } }))}
+                        placeholder="New password"
+                      />
+                    </td>
+                    <td className="py-2 pr-4 text-xs text-brand-muted">{fmtDate(u.created_at)}</td>
+                    <td className="py-2">
+                      <div className="flex gap-2">
+                        <button onClick={() => saveUser(u.id)} disabled={busy} className="btn btn-primary px-3 py-1.5 text-xs">{busy ? "..." : "SAVE"}</button>
+                        <button onClick={() => cancelEditUser(u.id)} disabled={busy} className="btn btn-outline px-3 py-1.5 text-xs">CANCEL</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={u.id} className="border-b border-brand-line/40 last:border-0">
+                    <td className="py-3 pr-4 font-mono text-xs">{u.username}</td>
+                    <td className="py-3 pr-4 font-mono text-xs">{u.password || "—"}</td>
+                    <td className="py-3 pr-4 text-xs text-brand-muted">{fmtDate(u.created_at)}</td>
+                    <td className="py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => startEditUser(u)} className="btn btn-outline px-3 py-1.5 text-xs">EDIT</button>
+                        <button onClick={() => deleteUser(u.id)} disabled={savingAccountId === u.id} className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300">DELETE</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Creators CRUD */}
+      <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-7 shadow-luxe">
+        <div className="text-xs tracking-[0.22em] text-brand-muted">REGISTERED CREATORS ({creators.length})</div>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-line text-left text-xs tracking-[0.18em] text-brand-muted">
+                <th className="pb-3 pr-4 font-normal">USERNAME</th>
+                <th className="pb-3 pr-4 font-normal">PASSWORD</th>
+                <th className="pb-3 pr-4 font-normal">TEMP PW</th>
+                <th className="pb-3 pr-4 font-normal">LAST SEEN</th>
+                <th className="pb-3 pr-4 font-normal">REGISTERED</th>
+                <th className="pb-3 font-normal">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {creators.length === 0 ? (
+                <tr><td colSpan={6} className="py-4 text-xs text-brand-muted">No creators yet.</td></tr>
+              ) : creators.map((c) => {
+                const editing = editingCreator[c.id];
+                const busy = savingAccountId === c.id;
+                return editing ? (
+                  <tr key={c.id} className="border-b border-brand-line/40 bg-brand-surface2/20">
+                    <td className="py-2 pr-4">
+                      <input
+                        className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-1.5 font-mono text-xs outline-none focus:border-brand-gold/60"
+                        value={editing.username}
+                        onChange={(e) => setEditingCreator((p) => ({ ...p, [c.id]: { ...p[c.id], username: e.target.value } }))}
+                      />
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input
+                        className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-1.5 font-mono text-xs outline-none focus:border-brand-gold/60"
+                        value={editing.password}
+                        onChange={(e) => setEditingCreator((p) => ({ ...p, [c.id]: { ...p[c.id], password: e.target.value } }))}
+                        placeholder="New password"
+                      />
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input
+                        className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-1.5 font-mono text-xs outline-none focus:border-brand-gold/60"
+                        value={editing.tempPassword}
+                        onChange={(e) => setEditingCreator((p) => ({ ...p, [c.id]: { ...p[c.id], tempPassword: e.target.value } }))}
+                        placeholder="Temp password"
+                      />
+                    </td>
+                    <td className="py-2 pr-4 text-xs text-brand-muted">{c.last_seen || "—"}</td>
+                    <td className="py-2 pr-4 text-xs text-brand-muted">{fmtDate(c.created_at)}</td>
+                    <td className="py-2">
+                      <div className="flex gap-2">
+                        <button onClick={() => saveCreator(c.id)} disabled={busy} className="btn btn-primary px-3 py-1.5 text-xs">{busy ? "..." : "SAVE"}</button>
+                        <button onClick={() => cancelEditCreator(c.id)} disabled={busy} className="btn btn-outline px-3 py-1.5 text-xs">CANCEL</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={c.id} className="border-b border-brand-line/40 last:border-0">
+                    <td className="py-3 pr-4 font-mono text-xs">{c.username || "—"}</td>
+                    <td className="py-3 pr-4 font-mono text-xs">{c.password || "—"}</td>
+                    <td className="py-3 pr-4 font-mono text-xs">{c.temp_password || "—"}</td>
+                    <td className="py-3 pr-4 text-xs text-brand-muted">{c.last_seen || "—"}</td>
+                    <td className="py-3 pr-4 text-xs text-brand-muted">{fmtDate(c.created_at)}</td>
+                    <td className="py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => startEditCreator(c)} className="btn btn-outline px-3 py-1.5 text-xs">EDIT</button>
+                        <button onClick={() => deleteCreator(c.id)} disabled={savingAccountId === c.id} className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300">DELETE</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {accountMsg ? <div className="text-xs text-emerald-400">{accountMsg}</div> : null}
       {error ? <div className="text-xs text-red-400">{error}</div> : null}
     </div>
   );

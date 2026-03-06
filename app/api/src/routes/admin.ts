@@ -9,6 +9,119 @@ export const adminRouter = Router();
 // Apply authentication and role-based access control middleware for all admin routes.
 adminRouter.use(requireAuth, requireRole(["admin"]));
 
+// Route to fetch all user and creator account data for admin overview.
+adminRouter.get("/accounts", async (_req, res) => {
+  const pool = getPool();
+  try {
+    const [usersRes, creatorsRes] = await Promise.all([
+      pool.query(
+        `SELECT id::text AS id, username, password, created_at, updated_at
+           FROM app_accounts
+          WHERE role = 'user'
+          ORDER BY created_at DESC`
+      ),
+      pool.query(
+        `SELECT uuid::text AS id, username, password, temp_password, last_seen, created_at, updated_at
+           FROM providers
+          ORDER BY created_at DESC`
+      ),
+    ]);
+    res.json({ users: usersRes.rows, creators: creatorsRes.rows });
+  } catch {
+    res.status(500).json({ error: "accounts_load_failed" });
+  }
+});
+
+// Zod schema for updating a user account.
+const UpdateUserSchema = z.object({
+  username: z.string().min(3).max(80).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  password: z.string().min(6).max(200).optional(),
+});
+
+// Route to update a user account (username / password).
+adminRouter.put("/accounts/users/:id", async (req, res) => {
+  const parsed = UpdateUserSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
+  const { username, password } = parsed.data;
+  if (!username && !password) return res.status(400).json({ error: "nothing_to_update" });
+
+  const pool = getPool();
+  try {
+    const setClauses: string[] = ["updated_at = NOW()"];
+    const values: unknown[] = [req.params.id];
+    if (username) { values.push(username); setClauses.push(`username = $${values.length}`); }
+    if (password) { values.push(password); setClauses.push(`password = $${values.length}`); }
+    const rowCount = await pool.query(
+      `UPDATE app_accounts SET ${setClauses.join(", ")} WHERE id = $1::uuid AND role = 'user'`,
+      values
+    );
+    if (rowCount.rowCount === 0) return res.status(404).json({ error: "not_found" });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "user_update_failed" });
+  }
+});
+
+// Route to delete a user account.
+adminRouter.delete("/accounts/users/:id", async (req, res) => {
+  const pool = getPool();
+  try {
+    const rowCount = await pool.query(
+      `DELETE FROM app_accounts WHERE id = $1::uuid AND role = 'user'`,
+      [req.params.id]
+    );
+    if (rowCount.rowCount === 0) return res.status(404).json({ error: "not_found" });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "user_delete_failed" });
+  }
+});
+
+// Zod schema for updating a creator account.
+const UpdateCreatorSchema = z.object({
+  username: z.string().min(3).max(80).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  password: z.string().min(6).max(200).optional(),
+  tempPassword: z.string().max(200).optional().nullable(),
+});
+
+// Route to update a creator account (username / password / temp_password).
+adminRouter.put("/accounts/creators/:id", async (req, res) => {
+  const parsed = UpdateCreatorSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "invalid_body", details: parsed.error.flatten() });
+  const { username, password, tempPassword } = parsed.data;
+  if (username === undefined && password === undefined && tempPassword === undefined)
+    return res.status(400).json({ error: "nothing_to_update" });
+
+  const pool = getPool();
+  try {
+    const setClauses: string[] = ["updated_at = NOW()"];
+    const values: unknown[] = [req.params.id];
+    if (username !== undefined) { values.push(username); setClauses.push(`username = $${values.length}`); }
+    if (password !== undefined) { values.push(password); setClauses.push(`password = $${values.length}`); }
+    if (tempPassword !== undefined) { values.push(tempPassword ?? null); setClauses.push(`temp_password = $${values.length}`); }
+    const rowCount = await pool.query(
+      `UPDATE providers SET ${setClauses.join(", ")} WHERE uuid = $1::uuid`,
+      values
+    );
+    if (rowCount.rowCount === 0) return res.status(404).json({ error: "not_found" });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "creator_update_failed" });
+  }
+});
+
+// Route to delete a creator account.
+adminRouter.delete("/accounts/creators/:id", async (req, res) => {
+  const pool = getPool();
+  try {
+    const rowCount = await pool.query(`DELETE FROM providers WHERE uuid = $1::uuid`, [req.params.id]);
+    if (rowCount.rowCount === 0) return res.status(404).json({ error: "not_found" });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "creator_delete_failed" });
+  }
+});
+
 // Route to fetch application statistics.
 adminRouter.get("/stats", async (_req, res) => {
   const pool = getPool();
