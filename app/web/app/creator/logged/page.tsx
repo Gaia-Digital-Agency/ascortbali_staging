@@ -10,6 +10,7 @@ type CreatorProfile = {
   title: string;
   url: string;
   temp_password: string | null;
+  telegram_id: string;
   last_seen: string;
   notes: string;
   model_name: string;
@@ -61,6 +62,28 @@ const defaultSlots = Array.from({ length: 20 }, (_, i) => i + 1);
 const APP_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const CREATOR_NAME_REGEX = /^[A-Za-z0-9]{1,50}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NATIONALITY_OPTIONS = [
+  "Indonesian",
+  "Singaporean",
+  "Malaysian",
+  "Thai",
+  "Vietnamese",
+  "Filipino",
+  "Chinese",
+  "Japanese",
+  "Korean",
+  "Indian",
+  "Australian",
+  "British",
+  "American",
+];
+const COUNTRY_OPTIONS = ["Indonesia", "Singapore", "Malaysia", "Thailand", "Vietnam", "Philippines", "Australia", "United Kingdom", "United States"];
+const LANGUAGE_OPTIONS = ["English", "Bahasa Indonesia", "Mandarin", "Japanese", "Korean", "Thai", "Vietnamese", "Malay"];
+const EYES_OPTIONS = ["Brown", "Dark Brown", "Black", "Hazel", "Blue", "Green", "Gray"];
+const HAIR_COLOR_OPTIONS = ["Black", "Dark Brown", "Brown", "Light Brown", "Blonde", "Red", "Auburn"];
+const HEIGHT_OPTIONS = Array.from({ length: 51 }, (_, i) => `${140 + i} cm`);
+const WEIGHT_OPTIONS = Array.from({ length: 71 }, (_, i) => `${30 + i} kg`);
+const AGE_OPTIONS = Array.from({ length: 43 }, (_, i) => 18 + i);
 
 export default function CreatorPanel() {
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
@@ -114,17 +137,44 @@ export default function CreatorPanel() {
       setMessage(null);
       return;
     }
+    const requiredText: Array<[string, string]> = [
+      ["Name", creatorName],
+      ["Username", username],
+      ["Phone Number", String(profile.phone_number ?? "").trim()],
+      ["WhatsApp", String(profile.cell_phone ?? "").trim()],
+      ["Nationality", String(profile.nationality ?? "").trim()],
+      ["Country", String(profile.country ?? "").trim()],
+      ["City", String(profile.city ?? "").trim()],
+      ["Ethnicity", String(profile.ethnicity ?? "").trim()],
+      ["Languages", String(profile.languages ?? "").trim()],
+      ["Eyes", String(profile.eyes ?? "").trim()],
+      ["Hair Color", String(profile.hair_color ?? "").trim()],
+      ["Hair Length", String(profile.hair_length ?? "").trim()],
+      ["Height", String(profile.height ?? "").trim()],
+      ["Weight", String(profile.weight ?? "").trim()],
+      ["Services", String(profile.services ?? "").trim()],
+      ["Travel", String(profile.travel ?? "").trim()],
+      ["Notes", String(profile.notes ?? "").trim()],
+    ];
+    const missing = requiredText.find(([, v]) => !v);
+    if (missing) {
+      setError(`${missing[0]} is required.`);
+      setMessage(null);
+      return;
+    }
 
     setSavingProfile(true);
     setError(null);
     setMessage(null);
     try {
-  const payload = {
+  const autoLastSeen = new Date().toISOString();
+    const payload = {
         username,
-        title: profile.title,
-        url: profile.url,
+        title: username,
+        url: profile.url ?? "",
         tempPassword: profile.temp_password ?? "",
-        lastSeen: profile.last_seen ?? "",
+        telegramId: profile.telegram_id ?? "",
+        lastSeen: autoLastSeen,
         notes: profile.notes ?? "",
         modelName: creatorName,
     gender: profile.gender,
@@ -153,6 +203,7 @@ export default function CreatorPanel() {
     isActive: profile.is_active,
   };
       await apiFetch("/me/creator-profile", { method: "PUT", body: JSON.stringify(payload) });
+      setProfile((prev) => (prev ? { ...prev, last_seen: autoLastSeen } : prev));
       setMessage("Creator profile updated.");
     } catch (err: any) {
       if (err?.message === "creator_name_taken") {
@@ -238,13 +289,15 @@ export default function CreatorPanel() {
     setError(null);
     setMessage(null);
     setSavingProfile(true);
+    const autoLastSeen = new Date().toISOString();
     try {
       const payload = {
         username: (profile.username ?? "").trim().toLowerCase(),
-        title: profile.title,
+        title: (profile.username ?? "").trim().toLowerCase(),
         url: profile.url,
         tempPassword: profile.temp_password ?? "",
-        lastSeen: profile.last_seen ?? "",
+        telegramId: profile.telegram_id ?? "",
+        lastSeen: autoLastSeen,
         notes: profile.notes ?? "",
         modelName: profile.model_name ?? "",
         gender: profile.gender,
@@ -273,7 +326,7 @@ export default function CreatorPanel() {
         isActive: next,
       };
       await apiFetch("/me/creator-profile", { method: "PUT", body: JSON.stringify(payload) });
-      setProfile((prev) => (prev ? { ...prev, is_active: next } : prev));
+      setProfile((prev) => (prev ? { ...prev, is_active: next, last_seen: autoLastSeen } : prev));
       setMessage(next ? "Profile is now active." : "Profile is now inactive.");
       setShowDeactivateConfirm(false);
       setDeactivateChecks([false, false, false, false, false]);
@@ -316,7 +369,7 @@ export default function CreatorPanel() {
             </button>
           </div>
           <p className="text-[11px] text-brand-muted md:text-right">
-            Username: {profile.username} | Temp password: {profile.temp_password || "not set"}
+            Username: {profile.username}
           </p>
         </div>
       </div>
@@ -346,59 +399,112 @@ export default function CreatorPanel() {
               placeholder="username@email.com"
             />
           </Field>
-          <Field label="URL">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.url ?? ""} onChange={(e) => updateProfile("url", e.target.value)} />
-          </Field>
           <Field label="AGE">
-            <input type="number" className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.age ?? 18} onChange={(e) => updateProfile("age", Number(e.target.value))} />
+            <select
+              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+              value={String(profile.age ?? 18)}
+              onChange={(e) => updateProfile("age", Number(e.target.value))}
+            >
+              {AGE_OPTIONS.map((age) => (
+                <option key={age} value={age}>
+                  {age}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="NATIONALITY">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.nationality ?? ""} onChange={(e) => updateProfile("nationality", e.target.value)} />
+            <select className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.nationality ?? ""} onChange={(e) => updateProfile("nationality", e.target.value)}>
+              <option value="">Select nationality</option>
+              {NATIONALITY_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="ETHNICITY">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.ethnicity ?? ""} onChange={(e) => updateProfile("ethnicity", e.target.value)} />
           </Field>
           <Field label="COUNTRY">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.country ?? ""} onChange={(e) => updateProfile("country", e.target.value)} />
+            <select className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.country ?? ""} onChange={(e) => updateProfile("country", e.target.value)}>
+              <option value="">Select country</option>
+              {COUNTRY_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="CITY">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.city ?? ""} onChange={(e) => updateProfile("city", e.target.value)} />
           </Field>
-          <Field label="LOCATION">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.location ?? ""} onChange={(e) => updateProfile("location", e.target.value)} />
-          </Field>
           <Field label="PHONE NUMBER">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.phone_number ?? ""} onChange={(e) => updateProfile("phone_number", e.target.value)} />
           </Field>
-          <Field label="CELL PHONE">
+          <Field label="WHATSAPP">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.cell_phone ?? ""} onChange={(e) => updateProfile("cell_phone", e.target.value)} />
           </Field>
-          <Field label="TEMP PASSWORD">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.temp_password ?? ""} onChange={(e) => updateProfile("temp_password", e.target.value)} />
+          <Field label="TELEGRAM ID (OPTIONAL)">
+            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.telegram_id ?? ""} onChange={(e) => updateProfile("telegram_id", e.target.value)} />
           </Field>
           <Field label="LAST SEEN ONLINE">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.last_seen ?? ""} onChange={(e) => updateProfile("last_seen", e.target.value)} />
+            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.last_seen ?? ""} readOnly />
           </Field>
           <Field label="LANGUAGES">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.languages ?? ""} onChange={(e) => updateProfile("languages", e.target.value)} />
-          </Field>
-          <Field label="SERVICES">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.services ?? ""} onChange={(e) => updateProfile("services", e.target.value)} />
+            <select className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.languages ?? ""} onChange={(e) => updateProfile("languages", e.target.value)}>
+              <option value="">Select language</option>
+              {LANGUAGE_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="EYES">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.eyes ?? ""} onChange={(e) => updateProfile("eyes", e.target.value)} />
+            <select className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.eyes ?? ""} onChange={(e) => updateProfile("eyes", e.target.value)}>
+              <option value="">Select eye color</option>
+              {EYES_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="HAIR COLOR">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.hair_color ?? ""} onChange={(e) => updateProfile("hair_color", e.target.value)} />
+            <select className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.hair_color ?? ""} onChange={(e) => updateProfile("hair_color", e.target.value)}>
+              <option value="">Select hair color</option>
+              {HAIR_COLOR_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="HAIR LENGTH">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.hair_length ?? ""} onChange={(e) => updateProfile("hair_length", e.target.value)} />
           </Field>
           <Field label="HEIGHT">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.height ?? ""} onChange={(e) => updateProfile("height", e.target.value)} />
+            <select className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.height ?? ""} onChange={(e) => updateProfile("height", e.target.value)}>
+              <option value="">Select height</option>
+              {HEIGHT_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="WEIGHT">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.weight ?? ""} onChange={(e) => updateProfile("weight", e.target.value)} />
+            <select className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.weight ?? ""} onChange={(e) => updateProfile("weight", e.target.value)}>
+              <option value="">Select weight</option>
+              {WEIGHT_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="SERVICES">
+            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.services ?? ""} onChange={(e) => updateProfile("services", e.target.value)} />
           </Field>
           <Field label="TRAVEL">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.travel ?? ""} onChange={(e) => updateProfile("travel", e.target.value)} />
