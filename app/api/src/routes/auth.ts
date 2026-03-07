@@ -439,9 +439,9 @@ authRouter.post("/register", rateLimit, async (req, res) => {
 
     // Insert app_accounts row with explicit id.
     await pool.query(
-      `INSERT INTO app_accounts (id, role, username, password, phone, whatsapp, telegram_id)
-       VALUES ($1::uuid, 'user', $2, $3, $4, $5, $6)`,
-      [accountId, email, password, phoneNumber || null, whatsapp || null, telegramId || null]
+      `INSERT INTO app_accounts (id, role, username, password)
+       VALUES ($1::uuid, 'user', $2, $3)`,
+      [accountId, email, password]
     );
 
     // Insert user_profiles row.
@@ -454,12 +454,9 @@ authRouter.post("/register", rateLimit, async (req, res) => {
          nationality,
          city,
          preferred_contact,
-         relationship_status,
-         phone,
-         whatsapp,
-         telegram_id
+         relationship_status
        )
-       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)`,
       [
         accountId,
         fullName,
@@ -469,9 +466,6 @@ authRouter.post("/register", rateLimit, async (req, res) => {
         city,
         preferredContact,
         relationshipStatus,
-        phoneNumber || null,
-        whatsapp || null,
-        telegramId || null,
       ]
     );
 
