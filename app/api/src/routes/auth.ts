@@ -72,10 +72,10 @@ authRouter.post("/login", rateLimit, async (req, res) => {
     // Handle admin/user login.
     const { rows } = await pool.query(
       `
-      SELECT id::text AS id, role, username, password
-        FROM app_accounts
-       WHERE role = $2
-         AND (LOWER(username) = $1 OR LOWER(COALESCE(email, '')) = $1)
+      SELECT a.id::text AS id, a.role, a.username, a.password
+        FROM app_accounts a
+       WHERE a.role = $2
+         AND (LOWER(a.username) = $1 OR LOWER(COALESCE(to_jsonb(a)->>'email', '')) = $1)
       `,
       [username, parsed.data.portal]
     );
@@ -282,7 +282,7 @@ authRouter.post("/forgot-password/verify", rateLimit, async (req, res) => {
       SELECT a.id::text AS id,
              a.role,
              a.username,
-             COALESCE(a.email, '') AS email,
+             COALESCE(to_jsonb(a)->>'email', '') AS email,
              COALESCE(a.phone, '') AS phone,
              COALESCE(a.whatsapp, '') AS whatsapp,
              COALESCE(a.password, '') AS password,
@@ -429,10 +429,7 @@ authRouter.post("/register", rateLimit, async (req, res) => {
 
   try {
     // Check email/username uniqueness.
-    const existing = await pool.query(
-      `SELECT id FROM app_accounts WHERE LOWER(email) = $1 OR LOWER(username) = $1 LIMIT 1`,
-      [email]
-    );
+    const existing = await pool.query(`SELECT id FROM app_accounts WHERE LOWER(username) = $1 LIMIT 1`, [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: "username_taken" });
     }
@@ -442,9 +439,9 @@ authRouter.post("/register", rateLimit, async (req, res) => {
 
     // Insert app_accounts row with explicit id.
     await pool.query(
-      `INSERT INTO app_accounts (id, role, username, password, email, phone, whatsapp, telegram_id)
-       VALUES ($1::uuid, 'user', $2, $3, $4, $5, $6, $7)`,
-      [accountId, email, password, email, phoneNumber || null, whatsapp || null, telegramId || null]
+      `INSERT INTO app_accounts (id, role, username, password, phone, whatsapp, telegram_id)
+       VALUES ($1::uuid, 'user', $2, $3, $4, $5, $6)`,
+      [accountId, email, password, phoneNumber || null, whatsapp || null, telegramId || null]
     );
 
     // Insert user_profiles row.
