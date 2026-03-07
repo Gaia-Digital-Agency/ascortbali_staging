@@ -60,6 +60,7 @@ const toImageUrl = (file?: string | null) => {
 const defaultSlots = Array.from({ length: 20 }, (_, i) => i + 1);
 const APP_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const CREATOR_NAME_REGEX = /^[A-Za-z0-9]{1,50}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function CreatorPanel() {
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
@@ -68,13 +69,14 @@ export default function CreatorPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingImageSlot, setSavingImageSlot] = useState<number | null>(null);
-  const [imageInputs, setImageInputs] = useState<Record<number, string>>({});
   const [pwCurrent, setPwCurrent] = useState("");
   const [pwNew, setPwNew] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
   const [showPwCurrent, setShowPwCurrent] = useState(false);
   const [showPwNew, setShowPwNew] = useState(false);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [deactivateChecks, setDeactivateChecks] = useState<boolean[]>([false, false, false, false, false]);
 
   useEffect(() => {
     (async () => {
@@ -88,11 +90,6 @@ export default function CreatorPanel() {
         const [p, imgs] = await Promise.all([apiFetch("/me/creator-profile"), apiFetch("/me/creator-images")]);
         setProfile(p);
         setImages(imgs);
-        const nextInputs: Record<number, string> = {};
-        (imgs as CreatorImage[]).forEach((img) => {
-          nextInputs[img.sequence_number] = img.image_file;
-        });
-        setImageInputs(nextInputs);
       } catch {
         clearTokens();
         window.location.href = withBasePath("/creator");
@@ -106,8 +103,14 @@ export default function CreatorPanel() {
   const saveProfile = async () => {
     if (!profile) return;
     const creatorName = (profile.model_name ?? "").trim();
+    const username = (profile.username ?? "").trim().toLowerCase();
     if (!CREATOR_NAME_REGEX.test(creatorName)) {
       setError("Creator name must be one word (letters/numbers only), max 50 characters.");
+      setMessage(null);
+      return;
+    }
+    if (!EMAIL_REGEX.test(username)) {
+      setError("Username must be a valid email address.");
       setMessage(null);
       return;
     }
@@ -117,6 +120,7 @@ export default function CreatorPanel() {
     setMessage(null);
     try {
   const payload = {
+        username,
         title: profile.title,
         url: profile.url,
         tempPassword: profile.temp_password ?? "",
@@ -155,37 +159,13 @@ export default function CreatorPanel() {
         setError("Creator name is already in use. Please choose another one.");
       } else if (err?.message === "invalid_creator_name") {
         setError("Creator name must be one word (letters/numbers only), max 50 characters.");
+      } else if (err?.message === "username_taken") {
+        setError("Username is already in use.");
       } else {
         setError(err.message ?? "Profile save failed");
       }
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const saveImage = async (sequenceNumber: number) => {
-    const value = imageInputs[sequenceNumber]?.trim();
-    if (!value) {
-      setError("Image URL/path is required.");
-      return;
-    }
-    setSavingImageSlot(sequenceNumber);
-    setError(null);
-    setMessage(null);
-    try {
-      const created = await apiFetch("/me/creator-images", {
-        method: "POST",
-        body: JSON.stringify({ sequenceNumber, imageFile: value }),
-      });
-      setImages((prev) => {
-        const without = prev.filter((img) => img.sequence_number !== sequenceNumber);
-        return [...without, created].sort((a, b) => a.sequence_number - b.sequence_number);
-      });
-      setMessage(`Image slot ${sequenceNumber} saved.`);
-    } catch (err: any) {
-      setError(err.message ?? "Image save failed");
-    } finally {
-      setSavingImageSlot(null);
     }
   };
 
@@ -198,7 +178,6 @@ export default function CreatorPanel() {
     try {
       await apiFetch(`/me/creator-images/${target.image_id}`, { method: "DELETE" });
       setImages((prev) => prev.filter((img) => img.image_id !== target.image_id));
-      setImageInputs((prev) => ({ ...prev, [sequenceNumber]: "" }));
       setMessage(`Image slot ${sequenceNumber} removed.`);
     } catch (err: any) {
       setError(err.message ?? "Image delete failed");
@@ -217,7 +196,6 @@ export default function CreatorPanel() {
       const res = await fetch(`${APP_BASE_PATH}/api/upload`, { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Upload failed");
-      setImageInputs((prev) => ({ ...prev, [sequenceNumber]: data.url }));
       await apiFetch("/me/creator-images", {
         method: "POST",
         body: JSON.stringify({ sequenceNumber, imageFile: data.url }),
@@ -255,14 +233,14 @@ export default function CreatorPanel() {
     }
   };
 
-  const toggleActive = async () => {
+  const toggleActive = async (next: boolean) => {
     if (!profile) return;
-    const next = !profile.is_active;
     setError(null);
     setMessage(null);
     setSavingProfile(true);
     try {
       const payload = {
+        username: (profile.username ?? "").trim().toLowerCase(),
         title: profile.title,
         url: profile.url,
         tempPassword: profile.temp_password ?? "",
@@ -297,6 +275,8 @@ export default function CreatorPanel() {
       await apiFetch("/me/creator-profile", { method: "PUT", body: JSON.stringify(payload) });
       setProfile((prev) => (prev ? { ...prev, is_active: next } : prev));
       setMessage(next ? "Profile is now active." : "Profile is now inactive.");
+      setShowDeactivateConfirm(false);
+      setDeactivateChecks([false, false, false, false, false]);
     } catch (err: any) {
       setError(err.message ?? "Profile status update failed");
     } finally {
@@ -308,28 +288,36 @@ export default function CreatorPanel() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex w-full flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="text-xs tracking-luxe text-brand-muted">CREATOR</div>
-          <h1 className="mt-2 font-display text-3xl">Creator Profile Page</h1>
-          <p className="mt-2 text-sm text-brand-muted">
-            Username: {profile.username} | Temp password: {profile.temp_password || "not set"}
-          </p>
+          <h1 className="mt-2 whitespace-nowrap font-display text-2xl md:text-3xl">Creator Profile Page</h1>
         </div>
-          <div className="flex gap-3">
-            <Link className="btn btn-outline" href="/">
+        <div className="flex w-full flex-col gap-2 md:w-auto md:items-end">
+          <div className="grid w-full grid-cols-3 gap-2 md:w-auto md:flex">
+            <Link className="btn btn-outline px-2 py-2 text-[10px] tracking-[0.14em]" href={withBasePath("/")}>
               BACK HOME
             </Link>
             <button
-              onClick={toggleActive}
-              className="btn btn-outline"
+              onClick={() => {
+                if (profile.is_active) {
+                  setShowDeactivateConfirm(true);
+                } else {
+                  void toggleActive(true);
+                }
+              }}
+              className="btn btn-outline px-2 py-2 text-[10px] tracking-[0.14em]"
               disabled={savingProfile}
             >
               {profile.is_active ? "DEACTIVATE" : "ACTIVATE"}
             </button>
-            <button onClick={logout} className="btn btn-outline">
+            <button onClick={logout} className="btn btn-outline px-2 py-2 text-[10px] tracking-[0.14em]">
               LOGOUT
             </button>
+          </div>
+          <p className="text-[11px] text-brand-muted md:text-right">
+            Username: {profile.username} | Temp password: {profile.temp_password || "not set"}
+          </p>
         </div>
       </div>
 
@@ -349,8 +337,14 @@ export default function CreatorPanel() {
               placeholder="One word, letters/numbers only"
             />
           </Field>
-          <Field label="TITLE">
-            <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.title ?? ""} onChange={(e) => updateProfile("title", e.target.value)} />
+          <Field label="USERNAME">
+            <input
+              type="email"
+              className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60"
+              value={profile.username ?? ""}
+              onChange={(e) => updateProfile("username", e.target.value)}
+              placeholder="username@email.com"
+            />
           </Field>
           <Field label="URL">
             <input className="w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none focus:border-brand-gold/60" value={profile.url ?? ""} onChange={(e) => updateProfile("url", e.target.value)} />
@@ -473,11 +467,8 @@ export default function CreatorPanel() {
               <ImageSlotEditor
                 key={slot}
                 slot={slot}
-                imageUrl={toImageUrl(imageInputs[slot] || existing?.image_file)}
-                rawValue={imageInputs[slot] ?? existing?.image_file ?? ""}
+                imageUrl={toImageUrl(existing?.image_file)}
                 busy={savingImageSlot === slot}
-                onValueChange={(value) => setImageInputs((prev) => ({ ...prev, [slot]: value }))}
-                onSave={() => saveImage(slot)}
                 onDelete={() => removeImage(slot)}
                 onUpload={(file) => uploadImage(slot, file)}
               />
@@ -488,6 +479,47 @@ export default function CreatorPanel() {
 
       {error ? <div className="text-xs text-red-400">{error}</div> : null}
       {message ? <div className="text-xs text-emerald-400">{message}</div> : null}
+
+      {showDeactivateConfirm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4">
+          <div className="w-full max-w-lg rounded-3xl border border-brand-line bg-brand-bg p-6">
+            <h2 className="font-display text-xl text-brand-text">Confirm Deactivation</h2>
+            <p className="mt-2 text-xs text-brand-muted">Check all confirmations before deactivating your profile.</p>
+            <div className="mt-4 space-y-3 text-sm">
+              {[
+                "I understand my profile will be hidden from site visitors.",
+                "I understand I can reactivate my profile later.",
+                "I have saved any profile changes I need.",
+                "I understand active chats may be affected.",
+                "I confirm I want to proceed with deactivation now.",
+              ].map((label, idx) => (
+                <label key={label} className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={deactivateChecks[idx]}
+                    onChange={(e) =>
+                      setDeactivateChecks((prev) => prev.map((v, i) => (i === idx ? e.target.checked : v)))
+                    }
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button className="btn btn-outline px-4 py-2 text-xs" onClick={() => setShowDeactivateConfirm(false)}>
+                CANCEL
+              </button>
+              <button
+                className="btn btn-primary px-4 py-2 text-xs"
+                disabled={!deactivateChecks.every(Boolean) || savingProfile}
+                onClick={() => void toggleActive(false)}
+              >
+                PROCEED
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -563,19 +595,13 @@ function PasswordInput({
 function ImageSlotEditor({
   slot,
   imageUrl,
-  rawValue,
   busy,
-  onValueChange,
-  onSave,
   onDelete,
   onUpload,
 }: {
   slot: number;
   imageUrl: string | null;
-  rawValue: string;
   busy: boolean;
-  onValueChange: (value: string) => void;
-  onSave: () => void;
   onDelete: () => void;
   onUpload: (file: File) => void;
 }) {
@@ -591,16 +617,7 @@ function ImageSlotEditor({
           <div className="flex h-full w-full items-center justify-center text-xs text-brand-muted">EMPTY</div>
         )}
       </div>
-      <input
-        className="w-full rounded-xl border border-brand-line bg-brand-surface2/40 px-3 py-2 text-xs outline-none focus:border-brand-gold/60"
-        value={rawValue}
-        onChange={(e) => onValueChange(e.target.value)}
-        placeholder="Image URL or /uploads path"
-      />
       <div className="flex gap-2">
-        <button onClick={onSave} disabled={busy} className="btn btn-primary px-3 py-2 text-xs">
-          {busy ? "..." : "SAVE"}
-        </button>
         <button onClick={onDelete} disabled={busy} className="btn btn-outline px-3 py-2 text-xs">
           DELETE
         </button>

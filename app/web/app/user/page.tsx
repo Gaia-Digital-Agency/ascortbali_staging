@@ -8,7 +8,7 @@ import { withBasePath } from "../../lib/paths";
 // UserLoginPage functional component.
 export default function UserLoginPage() {
   // State variables for username, password, loading status, and error messages.
-  const [username, setUsername] = useState("user");
+  const [email, setEmail] = useState("user@email.com");
   const [password, setPassword] = useState("user123");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export default function UserLoginPage() {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username, password, portal: "user" }),
+        body: JSON.stringify({ username: email, password, portal: "user" }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? "Login failed");
@@ -145,12 +145,13 @@ export default function UserLoginPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           {/* Username input field. */}
           <div>
-            <label className="text-xs tracking-[0.22em] text-brand-muted">USERNAME</label>
+            <label className="text-xs tracking-[0.22em] text-brand-muted">EMAIL</label>
             <input
               className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="user"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@email.com"
             />
           </div>
 

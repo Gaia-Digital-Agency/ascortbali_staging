@@ -169,6 +169,7 @@ meRouter.put("/user-profile", requireAuth, requireRole(["user"]), async (req: Au
 
 // Zod schema for validating creator profile data.
 const CreatorProfileSchema = z.object({
+  username: z.string().trim().toLowerCase().email(),
   title: z.string().max(255),
   url: z.string().max(2000),
   tempPassword: z.string().max(100),
@@ -292,40 +293,54 @@ meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (r
     if (duplicateNameRes.rows[0]) {
       return res.status(409).json({ error: "creator_name_taken", message: "Creator name is already in use." });
     }
+    const duplicateUsernameRes = await pool.query(
+      `
+      SELECT 1
+        FROM providers
+       WHERE LOWER(username) = LOWER($1)
+         AND uuid <> $2::uuid
+       LIMIT 1
+      `,
+      [p.username, req.user!.id]
+    );
+    if (duplicateUsernameRes.rows[0]) {
+      return res.status(409).json({ error: "username_taken", message: "Username is already in use." });
+    }
 
     const updateRes = await pool.query(
       `
       UPDATE providers
-         SET title = $2,
-             url = $3,
-             temp_password = $4,
-             last_seen = $5,
-             notes = $6,
-             model_name = $7,
-             gender = $8,
-             age = $9,
-             location = $10,
-             eyes = $11,
-             hair_color = $12,
-             hair_length = $13,
-             travel = $14,
-             weight = $15,
-             height = $16,
-             ethnicity = $17,
-             nationality = $18,
-             languages = $19,
-             phone_number = $20,
-             cell_phone = $21,
-             country = $22,
-             city = $23,
-             orientation = $24,
-             smoker = $25,
-             tattoo = $26,
-             piercing = $27,
-             services = $28,
-             meeting_with = $29,
-             available_for = $30,
-             is_active = COALESCE($31, is_active),
+         SET username = $2,
+             title = $3,
+             url = $4,
+             temp_password = $5,
+             last_seen = $6,
+             notes = $7,
+             model_name = $8,
+             gender = $9,
+             age = $10,
+             location = $11,
+             eyes = $12,
+             hair_color = $13,
+             hair_length = $14,
+             travel = $15,
+             weight = $16,
+             height = $17,
+             ethnicity = $18,
+             nationality = $19,
+             languages = $20,
+             phone_number = $21,
+             cell_phone = $22,
+             country = $23,
+             city = $24,
+             orientation = $25,
+             smoker = $26,
+             tattoo = $27,
+             piercing = $28,
+             services = $29,
+             meeting_with = $30,
+             available_for = $31,
+             is_active = COALESCE($32, is_active),
              updated_at = NOW()
        WHERE uuid = $1::uuid
        RETURNING uuid::text AS uuid,
@@ -364,6 +379,7 @@ meRouter.put("/creator-profile", requireAuth, requireRole(["creator"]), async (r
       `,
       [
         req.user!.id,
+        p.username,
         p.title,
         p.url,
         p.tempPassword,

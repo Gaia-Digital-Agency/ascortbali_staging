@@ -8,8 +8,8 @@ import { withBasePath } from "../../lib/paths";
 // CreatorLoginPage functional component.
 export default function CreatorLoginPage() {
   // State variables for username, password, loading status, and error messages.
-  const [username, setUsername] = useState("callista");
-  const [password, setPassword] = useState("6282144288224");
+  const [username, setUsername] = useState("callista@email.com");
+  const [password, setPassword] = useState("secretcreator123");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForgot, setShowForgot] = useState(false);
@@ -160,12 +160,12 @@ export default function CreatorLoginPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           {/* Username input field. */}
           <div>
-            <label className="text-xs tracking-[0.22em] text-brand-muted">USERNAME</label>
+            <label className="text-xs tracking-[0.22em] text-brand-muted">EMAIL</label>
             <input
               className="mt-2 w-full rounded-2xl border border-brand-line bg-brand-surface2/40 px-4 py-3 text-sm outline-none placeholder:text-brand-muted/60 focus:border-brand-gold/60"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="callista"
+              placeholder="username@email.com"
             />
           </div>
 
@@ -186,7 +186,7 @@ export default function CreatorLoginPage() {
 
           {/* Login instructions. */}
           <div className="text-[11px] text-brand-muted">
-            Use creator <code>name</code> as username and phone/temp-password digits as password.
+            Sign in using your creator email and password. Dev fallback password remains <code>secretcreator123</code>.
           </div>
 
           {/* Submit button. */}
@@ -272,7 +272,7 @@ export default function CreatorLoginPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-lg rounded-3xl border border-brand-line bg-brand-surface p-6 shadow-luxe">
             <div className="text-xs tracking-[0.22em] text-brand-muted">REGISTRATION CONFIRMATION</div>
-            <h2 className="mt-2 font-display text-2xl">Please Confirm Before Sign In</h2>
+            <h2 className="mt-2 font-display text-2xl">Confirm Before Signing</h2>
             <p className="mt-2 text-sm text-brand-muted">
               To continue, confirm platform policy and agreements for Terms of Use, Privacy Statement, and no nude
               photograph uploads.

@@ -29,7 +29,7 @@ const NATIONALITIES = [
 const AGES = Array.from({ length: 53 }, (_, i) => 18 + i); // 18–70
 
 export default function CreatorRegisterPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [modelName, setModelName] = useState("");
@@ -73,7 +73,7 @@ export default function CreatorRegisterPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          username: username.trim(),
+          username: email.trim().toLowerCase(),
           password,
           modelName: modelName.trim(),
           gender,
@@ -113,15 +113,14 @@ export default function CreatorRegisterPage() {
 
           {/* Account credentials */}
           <div>
-            <label className="text-xs tracking-[0.22em] text-brand-muted">USERNAME</label>
+            <label className="text-xs tracking-[0.22em] text-brand-muted">USERNAME (EMAIL)</label>
             <input
               required
+              type="email"
               className={inp}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="your_username"
-              pattern="[a-zA-Z0-9_]+"
-              title="Letters, numbers, underscores only"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="username@email.com"
             />
           </div>
 

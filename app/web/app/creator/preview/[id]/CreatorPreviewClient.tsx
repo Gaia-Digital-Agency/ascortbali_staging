@@ -42,9 +42,6 @@ export default function CreatorPreviewClient(props: Props) {
           <h1 className="mt-2 font-display text-3xl">{props.title}</h1>
         </div>
         <div className="flex gap-2">
-          <Link className="btn btn-outline" href="/">
-            BACK HOME
-          </Link>
           {props.nextCreatorId && canViewFull ? (
             <Link className="btn btn-outline" href={`/creator/preview/${props.nextCreatorId}`}>
               NEXT
@@ -66,19 +63,6 @@ export default function CreatorPreviewClient(props: Props) {
         </div>
 
         <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-6">
-          {!canViewFull ? (
-            <div className="mb-3 rounded-xl border border-brand-gold/40 bg-brand-surface2/60 p-3 text-xs text-brand-muted">
-              This page is available for members only. Please login to your account or register to continue.
-              <div className="mt-2 flex gap-2">
-                <Link className="btn btn-outline px-3 py-2 text-[10px]" href="/user">
-                  LOGIN
-                </Link>
-                <Link className="btn btn-outline px-3 py-2 text-[10px]" href="/user/register">
-                  REGISTER
-                </Link>
-              </div>
-            </div>
-          ) : null}
           <div className={`text-xs tracking-luxe text-brand-muted ${blurClass}`}>DETAILS</div>
           <div className={`mt-4 grid gap-3 ${blurClass}`}>
             {props.fields.map(([label, value]) => (
@@ -121,6 +105,24 @@ export default function CreatorPreviewClient(props: Props) {
           )}
         </div>
       </section>
+
+      {!canViewFull ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-3xl border border-brand-line bg-brand-surface p-6 shadow-luxe">
+            <div className="text-sm text-brand-muted">
+              This page is available for members only. Please login to your account or register to continue.
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Link className="btn btn-outline px-3 py-2 text-[10px]" href="/user">
+                LOGIN
+              </Link>
+              <Link className="btn btn-outline px-3 py-2 text-[10px]" href="/user/register">
+                REGISTER
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

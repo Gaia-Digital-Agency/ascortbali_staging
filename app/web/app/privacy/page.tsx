@@ -16,8 +16,8 @@ export default function PrivacyPage() {
 
       <div className="rounded-3xl border border-brand-line bg-brand-surface/55 p-8 shadow-luxe">
         <p className="text-sm leading-relaxed text-brand-muted">
-          This privacy statement is currently mirrored from the Terms and Conditions content so legal text is available across
-          the same sections for the initial rollout.
+          This Privacy Statement explains how account, profile, and usage information is collected, used, and protected
+          when you use this site.
         </p>
       </div>
 

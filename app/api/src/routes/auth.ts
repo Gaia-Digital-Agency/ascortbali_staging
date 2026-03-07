@@ -74,8 +74,8 @@ authRouter.post("/login", rateLimit, async (req, res) => {
       `
       SELECT id::text AS id, role, username, password
         FROM app_accounts
-       WHERE LOWER(username) = $1
-         AND role = $2
+       WHERE role = $2
+         AND (LOWER(username) = $1 OR LOWER(COALESCE(email, '')) = $1)
       `,
       [username, parsed.data.portal]
     );
@@ -489,7 +489,7 @@ authRouter.post("/register", rateLimit, async (req, res) => {
 
 // Zod schema for creator registration.
 const CreatorRegisterSchema = z.object({
-  username: z.string().min(3).max(80).regex(/^[a-zA-Z0-9_]+$/, "Username: letters, numbers, underscores only"),
+  username: z.string().trim().toLowerCase().email(),
   password: z.string().min(6).max(200),
   modelName: z.string().min(1).max(100),
   gender: z.string().max(20).optional().default(""),
@@ -522,7 +522,7 @@ authRouter.post("/register/creator", rateLimit, async (req, res) => {
     // Pre-generate UUIDs so we don't need RETURNING (Prisma pool uses $executeRawUnsafe for INSERTs).
     const creatorId = randomUUID();
     const providerId = "P" + creatorId.replace(/-/g, "").slice(0, 8).toUpperCase();
-    const url = `/creator/preview/${username.toLowerCase()}`;
+    const url = `/creator/preview/${creatorId}`;
 
     await pool.query(
       `INSERT INTO providers (uuid, provider_id, username, password, model_name, gender, age, nationality, city, phone_number, telegram_id, url)

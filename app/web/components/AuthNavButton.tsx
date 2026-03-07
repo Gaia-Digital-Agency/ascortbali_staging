@@ -45,11 +45,11 @@ export function AuthNavButton() {
   // Renders login/register buttons if not logged in.
   if (!loggedIn) {
     return (
-      <div className="flex items-center gap-2">
-        <Link className="btn btn-outline" href="/user">
+      <div className="flex min-w-0 items-center gap-1 whitespace-nowrap">
+        <Link className="btn btn-outline px-2 py-2 text-[9px] tracking-[0.14em] sm:px-3 sm:text-[10px]" href="/user">
           LOGIN
         </Link>
-        <Link className="btn btn-outline" href="/user/register">
+        <Link className="btn btn-outline px-2 py-2 text-[9px] tracking-[0.14em] sm:px-3 sm:text-[10px]" href="/user/register">
           REGISTER
         </Link>
       </div>
@@ -61,8 +61,8 @@ export function AuthNavButton() {
 
   // Renders a logout button if logged in.
   return (
-    <div className="flex items-center gap-2">
-      <Link className="btn btn-outline" href={profileHref}>
+    <div className="flex min-w-0 items-center gap-1 whitespace-nowrap">
+      <Link className="btn btn-outline px-2 py-2 text-[9px] tracking-[0.14em] sm:px-3 sm:text-[10px]" href={profileHref}>
         EDIT PROFILE
       </Link>
       <button
@@ -72,7 +72,7 @@ export function AuthNavButton() {
           setRole(null);
           window.location.assign(withBasePath("/"));
         }}
-        className="btn btn-outline"
+        className="btn btn-outline px-2 py-2 text-[9px] tracking-[0.14em] sm:px-3 sm:text-[10px]"
       >
         LOGOUT
       </button>

@@ -21,6 +21,12 @@ export function FooterStatus() {
         >
           Privacy Statement
         </a>
+        <a
+          href={withBasePath("/creator")}
+          className="block underline-offset-2 hover:text-brand-gold hover:underline"
+        >
+          Creator Zone
+        </a>
       </div>
     </div>
   );
