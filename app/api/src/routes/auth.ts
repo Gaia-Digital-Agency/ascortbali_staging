@@ -17,7 +17,7 @@ export const authRouter = Router();
 
 const FALLBACK_PASSWORDS: Record<string, string> = {
   admin: "admin123",
-  user: "teameditor123",
+  user: "user123",
   creator: "secretcreator123",
 };
 
