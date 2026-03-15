@@ -1,266 +1,94 @@
-# Database Schema
+# Data Model Notes
 
-This document provides a high-level overview of the database schema for the Ascort Bali application.
+Current data-model reference for the deployed `ascortBali` app.
 
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
+## Important Constraint
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+The running app is not backed by one clean Prisma schema.
 
-enum Role {
-  customer
-  provider
-  admin
-}
+It currently uses:
 
-enum OrderStatus {
-  pending
-  paid
-  cancelled
-  fulfilled
-}
+- Direct SQL tables queried through `pg`
+- Prisma-managed models used by `services` and `orders`
 
-enum PaymentStatus {
-  pending
-  succeeded
-  failed
-  refunded
-}
+Because of that, this file documents the implemented storage shape at a high level instead of pretending the whole app is represented by one Prisma file.
 
-model User {
-  id            String   @id @default(uuid())
-  role          Role
-  email         String   @unique
-  passwordHash  String
-  phone         String?
-  phoneVerified Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  lastLogin     DateTime?
+## SQL-Backed Tables Used Directly By Routes
 
-  profile       UserProfile?
-  providerProfile ProviderProfile?
-  services      Service[] @relation("CreatorServices")
-  orders        Order[]   @relation("UserOrders")
-  createdOrders Order[]   @relation("CreatorOrders")
-  favorites     Favorite[]
-  refreshTokens RefreshToken[]
-  visitorLinks  VisitorUserLink[]
-  activityLogs  ActivityLog[]
-}
+Primary tables observed in current route code:
 
-model UserProfile {
-  userId       String  @id
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName     String?
-  gender       String?
-  dateOfBirth  DateTime?
-  nationality  String?
-  primaryCountry String?
-  notes        String?
+- `app_accounts`
+  - user/admin credentials and account metadata
+- `user_profiles`
+  - extended user profile fields
+- `providers`
+  - creator accounts and creator profile data
+- `provider_images`
+  - creator image slot records
+- `advertising_spaces`
+  - homepage ad slots and bottom text slot
+- `advertising_space_history`
+  - ad slot history/audit trail
+- `visitor_analytics`
+  - visit analytics records
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
+## Prisma-Backed Models Used By Current Routes
 
-model ProviderProfile {
-  userId      String @id
-  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+Current Prisma-backed route areas:
 
-  displayName String
-  bio         String?
-  country     String?
-  city        String?
-  location    String?
-  telegramId  String?
+- `Service`
+- `Order`
+- `Payment`
+- related Prisma relations used by service/order APIs
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+These are used by:
 
-  languages   ProviderLanguage[]
-}
+- `app/api/src/routes/services.ts`
+- `app/api/src/routes/orders.ts`
 
-model Language {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  providers ProviderLanguage[]
-}
+## Route-To-Data Mapping
 
-model ProviderLanguage {
-  providerId String
-  languageId Int
-  provider   ProviderProfile @relation(fields: [providerId], references: [userId], onDelete: Cascade)
-  language   Language        @relation(fields: [languageId], references: [id], onDelete: Restrict)
+### Auth / Account
 
-  @@id([providerId, languageId])
-}
+- `auth.ts`
+  - reads/writes `app_accounts`
+  - reads/writes `providers`
+  - creates `user_profiles` during user registration
 
-model Category {
-  id    String @id @default(uuid())
-  name  String @unique
-  services Service[]
-}
+### User / Creator Self-Service
 
-model Service {
-  id             String   @id @default(uuid())
-  creatorId      String
-  creator        User     @relation("CreatorServices", fields: [creatorId], references: [id], onDelete: Cascade)
+- `me.ts`
+  - reads/writes `user_profiles`
+  - reads/writes `providers`
+  - reads/writes `provider_images`
 
-  title          String
-  description    String
-  mainImageUrl   String?
-  galleryImages  Json?
-  categoryId     String?
-  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+### Admin
 
-  basePrice      Decimal  @db.Decimal(12,2)
-  durationMinutes Int
-  active         Boolean  @default(true)
-  featuredRank   Int?
+- `admin.ts`
+  - reads/writes `app_accounts`
+  - reads/writes `providers`
+  - reads/writes `advertising_spaces`
+  - writes `advertising_space_history`
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+### Public Creator / Ads / Analytics
 
-  orders         Order[]
-  favorites      Favorite[]
-}
+- `creators.ts`
+  - reads `providers`
+  - reads `provider_images`
+- `ads.ts`
+  - reads `advertising_spaces`
+- `analytics.ts`
+  - reads/writes `visitor_analytics`
 
-model Favorite {
-  userId    String
-  serviceId String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+### Services / Orders
 
-  @@id([userId, serviceId])
-  @@index([serviceId])
-}
+- `services.ts`
+  - Prisma-backed service records
+- `orders.ts`
+  - Prisma-backed orders and payments
 
-model Order {
-  id         String      @id @default(uuid())
-  userId     String
-  serviceId  String
-  creatorId  String
+## Operational Implications
 
-  user       User        @relation("UserOrders", fields: [userId], references: [id], onDelete: Restrict)
-  service    Service     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  creator    User        @relation("CreatorOrders", fields: [creatorId], references: [id], onDelete: Restrict)
-
-  status     OrderStatus @default(pending)
-  totalPrice Decimal     @db.Decimal(12,2)
-
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-
-  payments   Payment[]
-  @@index([userId, createdAt])
-  @@index([creatorId, createdAt])
-}
-
-model Payment {
-  id            String        @id @default(uuid())
-  orderId       String
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  provider      String
-  amount        Decimal       @db.Decimal(12,2)
-  status        PaymentStatus @default(pending)
-  transactionRef String?
-  paidAt        DateTime?
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([orderId])
-}
-
-model Visitor {
-  id         String   @id @default(uuid())
-  ipHash     String   @unique
-  country    String?
-  city       String?
-  userAgent  String?
-  firstSeen  DateTime @default(now())
-  lastSeen   DateTime @default(now())
-  totalVisits Int     @default(1)
-
-  links      VisitorUserLink[]
-  activityLogs ActivityLog[]
-}
-
-model VisitorUserLink {
-  visitorId String
-  userId    String
-  linkedAt  DateTime @default(now())
-
-  visitor   Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([visitorId, userId])
-  @@index([userId])
-}
-
-model AdvertisingSpace {
-  id        String   @id @default(uuid())
-  slot      String   @unique
-  title     String
-  subtitle  String
-  image     String
-  ctaLabel  String?
-  ctaHref   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  history   AdvertisingSpaceHistory[]
-
-  @@map("advertising_spaces")
-}
-
-model AdvertisingSpaceHistory {
-  id        String   @id @default(uuid())
-  slot      String
-  space     AdvertisingSpace @relation(fields: [slot], references: [slot], onDelete: Cascade)
-  title     String
-  subtitle  String
-  image     String
-  ctaLabel  String?
-  ctaHref   String?
-  action    String   @default("update")
-  changedAt DateTime @default(now())
-
-  @@map("advertising_space_history")
-}
-
-model ActivityLog {
-  id        String   @id @default(uuid())
-  userId    String?
-  visitorId String?
-
-  action    String
-  metadata  Json?
-  createdAt DateTime @default(now())
-
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  visitor   Visitor? @relation(fields: [visitorId], references: [id], onDelete: SetNull)
-
-  @@index([userId, createdAt])
-  @@index([visitorId, createdAt])
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  tokenHash String   @unique
-  revoked   Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([userId, expiresAt])
-}
-```
+- Schema changes must be checked in both SQL-query code and Prisma-backed code.
+- Production behavior can break if a column exists in one environment but not another, even when TypeScript compiles cleanly.
+- Documentation and migrations should reference the actual table/column usage in routes, not an aspirational unified schema.
