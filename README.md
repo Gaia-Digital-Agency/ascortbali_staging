@@ -1,4 +1,4 @@
-# BaliGirls
+# Ascort Bali
 
 - README.md creation date: February 24, 2026
 - GitHub remote name: `origin`
@@ -7,85 +7,30 @@
 - Copyright (C) 2026
 
 ## App Title
-BaliGirls
+Ascort Bali
 
 ## App Introduction
-BaliGirls is a multi-role web application with public creator listings, filtering, ad placements, and authenticated portals for admin, creator, and user workflows.
-
-## App Architecture
-- Web app: Next.js (App Router)
-- API app: Express.js (REST JSON)
-- Database: PostgreSQL
-- Storage: Google Cloud Storage (uploads, creator images, ad assets)
-- Runtime: PM2 on Linux VM
-- Reverse proxy: NGINX (`/baligirls` base path)
-
-## Google Cloud Patform
-- Compute Engine VM hosts the app runtime (`baligirls-web`, `baligirls-api` under PM2).
-- Cloud SQL hosts PostgreSQL database for users, creators, images, and ad slots.
-- Google Cloud Storage hosts media assets.
-- Public traffic enters via VM public IP and NGINX routing.
-
-## Google Cloud Storage
-- Creator image/upload objects:
-  - `gs://gda-ce01-bucket/baligirls/uploads/`
-- Homepage ad image objects:
-  - `gs://gda-ce01-bucket/baligirls/ads/`
-- Static assets:
-  - `gs://gda-s01-bucket/baligirls/static/`
-- Next.js media routes:
-  - `/baligirls/api/uploads/<object-key>` -> streams from GCS
-  - `/baligirls/api/clean-image/<filename>` -> resolves creator image from GCS prefix
-
-  <div style="page-break-after: always;"></div>
-
-## App Language and Frameworks
-- TypeScript
-- React 18
-- Next.js 14
-- Express 4
-- PostgreSQL (`pg`)
-- Tailwind CSS
-- JWT authentication (EdDSA/Ed25519)
-
-## App File Structure
-```text
-app/
-  web/              # Next.js frontend + API routes for media serving/upload
-  api/              # Express REST backend
-  data/             # page_data.json, image_data.json
-  Assets/
-    Admin/          # admin static assets
-    Creator/        # creator clean images (legacy/local reference)
-database/
-  schema.sql
-  migrate.py
-  seed.py
-engine/
-  scrape/build/watermark utilities
-references/
-  operational notes and migration references
-```
+Ascort Bali is a comprehensive, multi-role web platform designed for creator listings and service discovery. It provides a public, filterable directory of creators, integrated advertising placements, and distinct, authenticated portals for administrators, creators, and users. The application facilitates seamless interaction between users and creators, offering features such as service booking, favorite management, and secure user authentication.
 
 ## App Features
 - Homepage (`/`)
   - Ad panels (`home-1`, `home-2`, `home-3`)
-  - Creator cards grid
-  - Filters (nationality, orientation, age band, height, bust size)
-  - Pagination
+  - Creator service listings with gallery images
+  - Advanced filtering (nationality, orientation, age, height, etc.)
+  - Pagination for browsing services
 - Admin (`/admin`, `/admin/logged`)
-  - Login
-  - Manage homepage ad images and link URLs
-  - Manage bottom ad text
-  - View creator/user counts
+  - Secure login
+  - Management of homepage ad images and links
+  - Oversight of user and creator accounts
 - Creator (`/creator`, `/creator/logged`)
-  - Login
-  - Manage profile fields
-  - Manage image slots (up to 20)
-  - File-upload picker dialog for images (browser popup file selector)
+  - Secure login and profile management
+  - Service management (create, update, feature)
+  - Image gallery management for services
 - User (`/user`, `/user/logged`, `/user/register`)
-  - Login and registration flow entry
-  - Manage user profile
+  - User registration and login
+  - Profile management
+  - Favorite services list
+  - Order history and management
 
 ## Frontend Features (Present)
 - UI/UX: custom themed UI with reusable components
@@ -137,6 +82,10 @@ pnpm --filter @ascortbali/api dev
 pnpm --filter @ascortbali/web dev
 ```
 
+Staging:
+- Web: `http://34.124.244.233/baligirls`
+- API: `http://34.124.244.233/baligirls/api`
+
 Server (PM2-managed):
 ```bash
 pm2 restart baligirls-api baligirls-web --update-env
@@ -145,6 +94,7 @@ pm2 save
 
 ## Other Relevant Areas
 - Base path deployment: app is mounted under `/baligirls`
+- Staging host: `34.124.244.233`
 - Public media endpoints:
   - `/baligirls/api/clean-image/<filename>`
   - `/baligirls/api/uploads/<object-key>`
